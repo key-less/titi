@@ -24,6 +24,17 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
     {
         $openOnly = !empty($filters['openOnly']);
         $filter = [];
+
+        // Filtrar por colas (Level I Support, Level II, Level III, Monitoring Alerts, etc.)
+        $queueIds = $filters['queueIds'] ?? config('autotask.queue_ids', []);
+        if (!empty($queueIds) && is_array($queueIds)) {
+            $filter[] = [
+                'op' => 'in',
+                'field' => 'queueID',
+                'value' => array_map('strval', $queueIds),
+            ];
+        }
+
         if (!empty($filters['assignedResourceId'])) {
             $filter[] = [
                 'op' => 'eq',
@@ -31,7 +42,17 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
                 'value' => (string) $filters['assignedResourceId'],
             ];
         }
-        if (!empty($filters['status']) && !$openOnly) {
+        // Filtro por estado: si openOnly, pedir solo open_status_ids a la API (New, In Progress, Waiting Customer, Waiting Vendor)
+        if ($openOnly) {
+            $openStatusIds = config('autotask.open_status_ids', [1, 6, 9, 10]);
+            if (!empty($openStatusIds)) {
+                $filter[] = [
+                    'op' => 'in',
+                    'field' => 'status',
+                    'value' => array_map('strval', $openStatusIds),
+                ];
+            }
+        } elseif (!empty($filters['status'])) {
             $filter[] = [
                 'op' => 'in',
                 'field' => 'status',
@@ -47,10 +68,8 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
         }
 
         $cacheKey = self::TICKETS_CACHE_KEY . '_' . md5(json_encode($filters))
-            . ($openOnly ? '_o_' . md5(json_encode([
-                config('autotask.closed_status_ids', []),
-                config('autotask.closed_status_labels', []),
-            ])) : '');
+            . '_q_' . md5(json_encode($queueIds))
+            . ($openOnly ? '_o_' . md5(json_encode(config('autotask.open_status_ids', [1, 6, 9, 10]))) : '');
         if ($this->cacheTtl > 0) {
             $cached = Cache::get($cacheKey);
             if ($cached !== null) {
@@ -60,32 +79,7 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
 
         $items = $this->client->query('Tickets', $filter, $filters['limit'] ?? 500);
 
-        if ($openOnly) {
-            $closedLabels = array_map('strtolower', config('autotask.closed_status_labels', ['Complete', 'Work Complete', 'RMM Resolved']));
-            $closedIds = config('autotask.closed_status_ids', [12, 13, 14]);
-            $items = array_values(array_filter($items, function (array $item) use ($closedLabels, $closedIds) {
-                $raw = $item['status'] ?? $item['Status'] ?? null;
-                $statusId = $raw !== null && $raw !== '' ? (int) $raw : 0;
-                if ($statusId > 0 && in_array($statusId, $closedIds, true)) {
-                    return false;
-                }
-                $label = is_numeric($raw) ? $this->resolveStatusLabel($raw) : (is_string($raw) ? trim($raw) : null);
-                if ($label === null || $label === '') {
-                    return true;
-                }
-                $labelLower = strtolower($label);
-                if (in_array($labelLower, $closedLabels, true)) {
-                    return false;
-                }
-                $closedSubstrings = ['complete', 'resolved', 'closed', 'cerrado', 'completado', 'cancelado', 'cancelled'];
-                foreach ($closedSubstrings as $sub) {
-                    if (str_contains($labelLower, $sub)) {
-                        return false;
-                    }
-                }
-                return true;
-            }));
-        }
+        // Con openOnly el filtro por status ya se aplicó en la query a la API; no hace falta filtrar en PHP.
 
         $tickets = [];
         foreach ($items as $item) {
@@ -170,6 +164,7 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
             assignedResourceId: $ticket->assignedResourceId,
             creatorResourceId: $ticket->creatorResourceId,
             completedByResourceId: $ticket->completedByResourceId,
+            queueId: $ticket->queueId,
             account: $account,
             contact: $contact,
             assignedResource: $assignedResource,
@@ -185,6 +180,12 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
         $title = $item['title'] ?? $item['Title'] ?? '';
         $statusLabel = $this->resolveStatusLabel($item['status'] ?? $item['Status'] ?? null);
         $status = TicketStatus::fromAutotaskLabel($statusLabel);
+
+        // Algunos endpoints pueden no devolver "id" pero sí "ticketNumber".
+        // El constructor de Ticket requiere id (int|string), así que usamos el ticketNumber como fallback.
+        if ($id === null) {
+            $id = $ticketNumber !== null ? (string) $ticketNumber : '0';
+        }
 
         return new Ticket(
             id: $id,
@@ -204,6 +205,7 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
             assignedResourceId: $this->intFrom($item, ['assignedResourceID', 'AssignedResourceID', 'AssignedResourceId']),
             creatorResourceId: $this->intFrom($item, ['creatorResourceID', 'CreatorResourceID', 'CreatorResourceId']),
             completedByResourceId: $this->intFrom($item, ['completedByResourceID', 'CompletedByResourceID', 'CompletedByResourceId']),
+            queueId: $this->intFrom($item, ['queueID', 'QueueID', 'QueueId']),
         );
     }
 

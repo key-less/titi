@@ -24,6 +24,8 @@ final class Ticket
         public ?int $assignedResourceId,
         public ?int $creatorResourceId,
         public ?int $completedByResourceId,
+        /** ID de la cola en AutoTask (Level I, Level II, Monitoring Alerts, etc.) */
+        public ?int $queueId = null,
         /** Cuenta/empresa asociada al ticket (desde AutoTask Companies) */
         public ?Account $account = null,
         /** Contacto que reporta (desde AutoTask Contacts) */

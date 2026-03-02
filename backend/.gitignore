@@ -13,3 +13,14 @@ storage/framework/sessions/*
 !storage/framework/sessions/.gitkeep
 storage/framework/views/*
 !storage/framework/views/.gitkeep
+
+# Laravel bootstrap cache (generado; no versionar)
+bootstrap/cache/*.php
+bootstrap/cache/*.tmp
+bootstrap/cache/.write-test
+!bootstrap/cache/.gitkeep
+
+# Archivos temporales y scripts de uso puntual
+*.tmp
+composer-setup.php
+check_cache.php

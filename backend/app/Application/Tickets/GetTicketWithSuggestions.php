@@ -55,6 +55,8 @@ final class GetTicketWithSuggestions
             'assignedResourceId' => $t->assignedResourceId,
             'creatorResourceId' => $t->creatorResourceId,
             'completedByResourceId' => $t->completedByResourceId,
+            'queueId' => $t->queueId,
+            'queueLabel' => $t->queueId !== null ? (config('autotask.queue_labels', [])[$t->queueId] ?? 'Queue ' . $t->queueId) : null,
         ];
         if ($t->account) {
             $arr['account'] = [

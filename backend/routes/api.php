@@ -18,6 +18,30 @@ Route::get('/ping', function () {
 
 Route::prefix('tickets')->group(function () {
     // Debe ir antes que /{id} para que "status" no se interprete como id
+    // Descubre la URL de zona para tu cuenta (solo necesita username). Útil si recibes 401 por zona incorrecta.
+    Route::get('/zone-info', function () {
+        $username = request()->query('username') ?? config('autotask.username');
+        if (empty($username)) {
+            return response()->json([
+                'error' => 'Falta el usuario. Usa: GET /api/tickets/zone-info?username=tu_api_user@ejemplo.com',
+                'hint' => 'El usuario debe ser un recurso con nivel "API User (API-only)" en AutoTask.',
+            ], 400, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
+        }
+        $zoneUrl = AutoTaskApiClient::getZoneUrl($username);
+        if ($zoneUrl === null) {
+            return response()->json([
+                'zone_url' => null,
+                'ok' => false,
+                'hint' => 'No se pudo obtener la zona. Verifica que el username sea correcto y que el recurso sea API User (API-only). Revisa también AUTOTASK_VERIFY_SSL si hay error SSL.',
+            ], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
+        }
+        return response()->json([
+            'zone_url' => $zoneUrl,
+            'ok' => true,
+            'hint' => 'Copia esta URL en .env como AUTOTASK_ZONE_URL (con o sin /atservicesrest al final). Luego reinicia el backend.',
+        ], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
+    });
+
     Route::get('/status', function () {
         try {
             $zone = config('autotask.zone_url');
@@ -43,7 +67,7 @@ Route::prefix('tickets')->group(function () {
                 'credentials_check' => $credentials_check,
                 'hint' => !$hasUser || !$hasSecret || !$hasCode
                     ? 'Completa AUTOTASK_USERNAME, AUTOTASK_SECRET, AUTOTASK_INTEGRATION_CODE en .env (sin espacios al pegar).'
-                    : ($verifySsl ? 'Si falla SSL, añade AUTOTASK_VERIFY_SSL=false en .env' : 'Si sigue 401: revisa en AutoTask que el usuario sea API-only, el Secret sea correcto y el Integration Code coincida con la pestaña Security del recurso.'),
+                    : 'Si acabas de cambiar .env ejecuta en backend: php artisan config:clear y reinicia el servidor. Si sigue 401: usuario debe ser API User (API-only), Tracking identifier en Security debe coincidir exactamente con AUTOTASK_INTEGRATION_CODE. Zona: GET /api/tickets/zone-info?username=TU_USER',
             ], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
         } catch (\Throwable $e) {
             return response()->json([

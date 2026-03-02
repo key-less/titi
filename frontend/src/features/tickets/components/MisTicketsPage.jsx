@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTickets } from "../hooks/useTickets";
 import { useTicketWithSuggestions } from "../hooks/useTicketWithSuggestions";
-import { fetchResources, fetchTicketStatus } from "../api/ticketsApi";
+import { fetchResources, fetchTicketStatus, fetchTicketStatusIds } from "../api/ticketsApi";
 
 const PERIOD_OPTIONS = [
   { value: "24h", label: "Últimas 24 horas" },
@@ -49,25 +49,30 @@ export function MisTicketsPage() {
   const [period, setPeriod] = useState("7d");
   const [activeTicket, setActiveTicket] = useState(null);
   const [assignedToFilter, setAssignedToFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
   const [resources, setResources] = useState([]);
+  const [statusLabels, setStatusLabels] = useState({});
   const [myResourceId, setMyResourceId] = useState(null);
 
   const assignedResourceId =
     assignedToFilter === "" ? undefined : assignedToFilter === "me" ? "me" : Number(assignedToFilter);
+  const statusIds = statusFilter ? [Number(statusFilter)] : undefined;
   const { tickets, loading: ticketsLoading, error: ticketsError, apiMessage, backendUnavailable, refetch: refetchTickets } = useTickets({
     limit: 500,
     period,
     assignedResourceId,
+    status: statusIds,
   });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [statusData, list] = await Promise.all([fetchTicketStatus(), fetchResources()]);
+        const [statusData, list, statusIdsData] = await Promise.all([fetchTicketStatus(), fetchResources(), fetchTicketStatusIds().catch(() => ({}))]);
         if (!cancelled) {
           if (statusData?.my_resource_id != null) setMyResourceId(statusData.my_resource_id);
           if (Array.isArray(list)) setResources(list);
+          if (statusIdsData && typeof statusIdsData === "object") setStatusLabels(statusIdsData);
         }
       } catch (_) {}
     })();
@@ -173,6 +178,29 @@ export function MisTicketsPage() {
                 </select>
               </label>
               <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 11, color: "#64748b" }}>
+                Estado:
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{
+                    background: "#0a1628",
+                    border: "1px solid #1a2744",
+                    color: "#cbd5e1",
+                    padding: "8px 12px",
+                    borderRadius: 6,
+                    fontFamily: "monospace",
+                    fontSize: 12,
+                    cursor: "pointer",
+                    minWidth: 160,
+                  }}
+                >
+                  <option value="">Todos los estados</option>
+                  {Object.entries(statusLabels).map(([id, label]) => (
+                    <option key={id} value={id}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 11, color: "#64748b" }}>
                 Asignado a:
                 <select
                   value={assignedToFilter}
@@ -229,8 +257,8 @@ export function MisTicketsPage() {
             {ticketsError && !backendUnavailable && !apiMessage && (
               <div style={{ padding: "12px 16px", background: "rgba(239,68,68,0.1)", borderRadius: 6, marginBottom: 12, fontFamily: "monospace", fontSize: 12, color: "#ef4444" }}>{ticketsError}</div>
             )}
-            <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 100px 90px 70px 80px", gap: 12, padding: "0 16px 10px" }}>
-              {["TICKET", "TÍTULO / ESTATUS", "PRIORIDAD", "ESTADO", "ACTIVIDAD", "TECH"].map((h) => (
+            <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 120px 100px 90px 70px 80px", gap: 12, padding: "0 16px 10px" }}>
+              {["TICKET", "TÍTULO / ESTATUS", "COLA", "PRIORIDAD", "ESTADO", "ACTIVIDAD", "TECH"].map((h) => (
                 <div key={h} className="helpdex-label">{h}</div>
               ))}
             </div>
@@ -251,7 +279,7 @@ export function MisTicketsPage() {
                   <div key={t.id}>
                     <div
                       className="ticket-row"
-                      style={{ display: "grid", gridTemplateColumns: "100px 1fr 100px 90px 70px 80px", gap: 12, padding: "14px 16px", alignItems: "center" }}
+                      style={{ display: "grid", gridTemplateColumns: "100px 1fr 120px 100px 90px 70px 80px", gap: 12, padding: "14px 16px", alignItems: "center" }}
                       onClick={() => setActiveTicket(activeTicket === t.id ? null : t.id)}
                     >
                       <div style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "#0ea5e9" }}>{t.ticketNumber || t.id}</div>
@@ -259,6 +287,7 @@ export function MisTicketsPage() {
                         <div style={{ fontSize: 13, color: "#cbd5e1", fontWeight: 600, marginBottom: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", maxWidth: 340 }}>{t.title}</div>
                         <span className="helpdex-badge" style={{ background: `${statusStyle}18`, color: statusStyle }}>{statusLbl}</span>
                       </div>
+                      <div style={{ fontFamily: "monospace", fontSize: 11, color: "#94a3b8" }}>{t.queueLabel ?? "—"}</div>
                       <div>
                         <span className="helpdex-badge" style={{ background: priorityStyle.bg, color: priorityStyle.color }}>{priorityLbl}</span>
                       </div>

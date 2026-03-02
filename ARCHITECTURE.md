@@ -2,6 +2,10 @@
 
 > Gestor personal e interactivo para Ingenieros de Soporte: tickets (AutoTask), parches (Datto RMM), sugerencias IA y chat asistente. Help Desk, soporte técnico y troubleshooting.
 
+## Coherencia entre chats
+
+**Este documento es la fuente de verdad del proyecto.** Cualquier cambio que afecte al backend, frontend, integraciones (AutoTask, Datto RMM, Supabase, IA) o estructura de carpetas debe reflejarse aquí (y en el README si aplica), para que los distintos chats mantengan coherencia y no se produzcan fallos al subir o desplegar la aplicación. Al iniciar una tarea nueva, conviene leer este archivo y el README del repo.
+
 ---
 
 ## 1. Visión y objetivos

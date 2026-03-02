@@ -8,6 +8,7 @@ namespace App\Domain\Enums;
  */
 enum TicketStatus: string
 {
+    case NEW = 'New';
     case IN_PROGRESS = 'In Progress';
     case COMPLETE = 'Complete';
     case WAITING_CUSTOMER = 'Waiting Customer';

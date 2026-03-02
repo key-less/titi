@@ -1,5 +1,11 @@
 <?php
 
+/*
+| AutoTask (Datto) REST API — Configuración.
+| Autenticación y requisitos: https://www.autotask.net/help/developerhelp/Content/APIs/REST/General_Topics/REST_Security_Auth.htm
+| Solo recursos con nivel "API User (API-only)" y Tracking identifier (Security tab) pueden usar la API.
+*/
+
 return [
     'zone_url' => rtrim((string) env('AUTOTASK_ZONE_URL', 'https://webservices3.autotask.net')),
     'username' => is_string($u = env('AUTOTASK_USERNAME')) ? trim($u) : '',
@@ -53,4 +59,30 @@ return [
     */
     'closed_status_labels' => ['Complete', 'Work Complete', 'RMM Resolved'],
     'closed_status_ids' => [12, 13, 14],
+
+    /*
+    | IDs de estado para "tickets abiertos" en la query a la API (Dashboard / open_only=1).
+    | La API solo devuelve tickets con status IN estos IDs (filter en la request, no filtro en PHP).
+    | Por defecto: New (1), In Progress (6), Waiting Customer (9), Waiting Vendor (10).
+    | Ref: https://www.autotask.net/help/developerhelp/Content/APIs/REST/API_Calls/REST_Advanced_Query_Features.htm
+    */
+    'open_status_ids' => [1, 6, 9, 10],
+
+    /*
+    | Filtrar tickets por colas (Level I Support, Level II, etc.). Si está vacío, se muestran todos.
+    | Obtén los IDs en AutoTask: Admin > Service Desk > Queues (o similar). Ej: AUTOTASK_QUEUE_IDS=123,456,789
+    */
+    'queue_ids' => array_values(array_filter(array_map('intval', explode(',', (string) env('AUTOTASK_QUEUE_IDS', ''))))),
+
+    /*
+    | Nombres de cola para mostrar en la UI. Clave = queue ID de tu AutoTask, valor = etiqueta.
+    | Ajusta los IDs para que coincidan con los de AUTOTASK_QUEUE_IDS y los nombres de tus colas.
+    */
+    'queue_labels' => [29682833 => 'Level I Support', 29682969 => 'Level II Support', 29683485=> 'Level III Support', 8=> 'Monitoring Alerts',
+        // Ejemplo (reemplaza con tus IDs reales desde AutoTask
+        // 123 => 'Level I Support',
+        // 456 => 'Level II Support',
+        // 789 => 'Level III Support
+        // 101 => 'Monitoring Alerts',
+    ],
 ];

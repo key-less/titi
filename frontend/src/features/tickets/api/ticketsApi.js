@@ -31,6 +31,14 @@ export async function fetchTicketStatus() {
 }
 
 /**
+ * GET /api/tickets/status-ids — status_labels (id => nombre) para filtro por estado.
+ */
+export async function fetchTicketStatusIds() {
+  const data = await api.get('/tickets/status-ids');
+  return data.status_labels ?? {};
+}
+
+/**
  * GET /api/resources — lista de recursos (personas) para filtro "Asignado a".
  */
 export async function fetchResources() {

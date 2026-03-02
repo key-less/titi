@@ -53,7 +53,11 @@ final class TicketController extends Controller
             ], 200, ['Content-Type' => 'application/json; charset=UTF-8'], JSON_UNESCAPED_UNICODE);
         }
 
-        $data = array_map(function ($t) {
+        $queueLabels = config('autotask.queue_labels', []);
+        $data = array_map(function ($t) use ($queueLabels) {
+            $queueLabel = $t->queueId !== null
+                ? ($queueLabels[$t->queueId] ?? 'Queue ' . $t->queueId)
+                : null;
             return [
                 'id' => $t->id,
                 'ticketNumber' => $t->ticketNumber,
@@ -73,6 +77,8 @@ final class TicketController extends Controller
                 'assignedResourceId' => $t->assignedResourceId,
                 'creatorResourceId' => $t->creatorResourceId,
                 'completedByResourceId' => $t->completedByResourceId,
+                'queueId' => $t->queueId,
+                'queueLabel' => $queueLabel,
                 'account' => $t->account ? [
                     'id' => $t->account->id,
                     'companyName' => $t->account->companyName,
