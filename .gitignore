@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+**/node_modules/
+
+# Entorno
+.env
+.env.*
+!.env.example
+
+# Build / caché
+dist/
+build/
+.next/
+.nuxt/
+.cache/
+*.log
+npm-debug.log*
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db

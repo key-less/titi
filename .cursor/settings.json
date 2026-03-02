@@ -1,0 +1,19 @@
+{
+  "plugins": {
+    "neon-postgres": {
+      "enabled": true
+    },
+    "hex": {
+      "enabled": true
+    },
+    "databricks-skills": {
+      "enabled": true
+    },
+    "vercel": {
+      "enabled": true
+    },
+    "supabase": {
+      "enabled": true
+    }
+  }
+}
