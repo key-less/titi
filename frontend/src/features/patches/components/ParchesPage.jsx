@@ -30,6 +30,7 @@ function formatDate(iso) {
 export function ParchesPage() {
   const location = useLocation();
   const [siteUid, setSiteUid] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
   const {
     sites,
     devices,
@@ -125,22 +126,42 @@ export function ParchesPage() {
             </div>
           )}
 
-          {/* Resumen por categoría */}
+          {/* Resumen por categoría — clic filtra la lista de dispositivos */}
           <div className="helpdex-card" style={{ padding: "22px 24px", marginBottom: 24 }}>
-            <div className="section-title">RESUMEN POR CATEGORÍA DE PATCH</div>
+            <div className="section-title">RESUMEN POR CATEGORÍA DE PATCH — clic para filtrar lista</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12 }}>
               {STATUS_ORDER.map((key) => {
                 const count = summary[key] ?? 0;
                 const label = summaryLabels[key] ?? key;
                 const style = STATUS_COLORS[key] ?? { bg: 'rgba(148,163,184,0.12)', color: '#94a3b8' };
+                const isSelected = selectedCategory === key;
                 return (
-                  <div key={key} style={{ background: style.bg, borderRadius: 8, padding: "12px 14px", textAlign: "center" }}>
-                    <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 700, color: style.color }}>{count}</div>
-                    <div className="helpdex-label" style={{ marginTop: 4 }}>{label}</div>
-                  </div>
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setSelectedCategory(isSelected ? '' : key)}
+                    style={{
+                      background: isSelected ? style.color : style.bg,
+                      color: isSelected ? '#fff' : style.color,
+                      border: isSelected ? `2px solid ${style.color}` : '2px solid transparent',
+                      borderRadius: 8,
+                      padding: "12px 14px",
+                      textAlign: "center",
+                      cursor: "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 700 }}>{count}</div>
+                    <div className="helpdex-label" style={{ marginTop: 4, opacity: isSelected ? 0.9 : 1 }}>{label}</div>
+                  </button>
                 );
               })}
             </div>
+            {selectedCategory && (
+              <div style={{ marginTop: 12, fontFamily: "monospace", fontSize: 11, color: "#64748b" }}>
+                Mostrando solo: {summaryLabels[selectedCategory] ?? selectedCategory}. <button type="button" onClick={() => setSelectedCategory('')} style={{ background: "none", border: "none", color: "#0ea5e9", cursor: "pointer", textDecoration: "underline" }}>Ver todos</button>
+              </div>
+            )}
           </div>
 
           {/* IA: cómo solucionar problemas de parches */}
@@ -179,7 +200,7 @@ export function ParchesPage() {
                   ))}
                 </div>
                 <div style={{ maxHeight: 420, overflowY: "auto" }}>
-                  {devices.map((d) => {
+                  {(selectedCategory ? devices.filter((d) => d.patchStatus === selectedCategory) : devices).map((d) => {
                     const statusStyle = STATUS_COLORS[d.patchStatus] ?? { bg: 'rgba(148,163,184,0.12)', color: '#94a3b8' };
                     return (
                       <div

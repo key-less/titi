@@ -17,10 +17,16 @@ class DashboardController
     public function metrics(Request $request, ListMyTickets $listMyTickets, ?DattoRmmApiClient $dattoClient = null): JsonResponse
     {
         $resolvedIds = config('autotask.resolved_status_ids', [13]);
-        $now = Carbon::now()->utc();
-        $todayStart = $now->copy()->startOfDay()->format('Y-m-d\TH:i:s.000');
-        $weekStart = $now->copy()->subDays(7)->startOfDay()->format('Y-m-d\TH:i:s.000');
-        $monthStart = $now->copy()->startOfMonth()->format('Y-m-d\TH:i:s.000');
+        $tz = config('app.timezone', 'UTC');
+        $now = Carbon::now($tz);
+        // "Hoy" en la zona de la app; AutoTask API espera fechas en UTC, así que convertimos
+        $todayStartLocal = $now->copy()->startOfDay();
+        $todayEndLocal = $now->copy()->endOfDay();
+        $todayStart = $todayStartLocal->copy()->setTimezone('UTC')->format('Y-m-d\TH:i:s.000');
+        $todayEnd = $todayEndLocal->copy()->setTimezone('UTC')->format('Y-m-d\TH:i:s.999');
+        $weekStart = $now->copy()->subDays(7)->startOfDay()->setTimezone('UTC')->format('Y-m-d\TH:i:s.000');
+        $monthStart = $now->copy()->startOfMonth()->setTimezone('UTC')->format('Y-m-d\TH:i:s.000');
+        $monthEnd = $now->copy()->endOfMonth()->setTimezone('UTC')->format('Y-m-d\TH:i:s.999');
 
         $openTickets = 0;
         $resolvedToday = 0;
@@ -41,14 +47,16 @@ class DashboardController
 
         try {
             $resolvedFilter = ['status' => $resolvedIds, 'limit' => 500];
-            $resolvedFilterToday = $resolvedFilter + ['completedDateGte' => $todayStart];
+            // Resueltos hoy: solo Complete (Closed) y completedDate dentro de hoy (sin caché para que siempre esté actualizado)
+            $resolvedFilterToday = $resolvedFilter + ['completedDateGte' => $todayStart, 'completedDateLte' => $todayEnd, 'skipCache' => true];
             $resolvedToday = count($listMyTickets->execute($resolvedFilterToday));
 
             $resolvedFilterWeek = $resolvedFilter + ['completedDateGte' => $weekStart];
             $resolvedWeekList = $listMyTickets->execute($resolvedFilterWeek);
             $resolvedWeek = count($resolvedWeekList);
 
-            $resolvedFilterMonth = $resolvedFilter + ['completedDateGte' => $monthStart];
+            // Resumen mensual: tickets en Complete (Closed) con completedDate en el mes actual
+            $resolvedFilterMonth = $resolvedFilter + ['completedDateGte' => $monthStart, 'completedDateLte' => $monthEnd];
             $resolvedMonthList = $listMyTickets->execute($resolvedFilterMonth);
             $resolvedMonth = count($resolvedMonthList);
 

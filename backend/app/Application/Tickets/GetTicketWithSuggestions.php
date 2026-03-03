@@ -95,34 +95,24 @@ final class GetTicketWithSuggestions
             'queueId' => $t->queueId,
             'queueLabel' => $t->queueId !== null ? (config('autotask.queue_labels', [])[$t->queueId] ?? 'Queue ' . $t->queueId) : null,
         ];
-        if ($t->account) {
-            $arr['account'] = [
-                'id' => $t->account->id,
-                'companyName' => $t->account->companyName,
-                'phone' => $t->account->phone,
-                'website' => $t->account->website,
-            ];
-        }
-        if ($t->contact) {
-            $arr['contact'] = [
-                'id' => $t->contact->id,
-                'firstName' => $t->contact->firstName,
-                'lastName' => $t->contact->lastName,
-                'fullName' => $t->contact->fullName(),
-                'email' => $t->contact->email,
-                'phone' => $t->contact->phone,
-                'title' => $t->contact->title,
-            ];
-        }
-        if ($t->assignedResource) {
-            $arr['assignedResource'] = $this->resourceToArray($t->assignedResource);
-        }
-        if ($t->creatorResource) {
-            $arr['creatorResource'] = $this->resourceToArray($t->creatorResource);
-        }
-        if ($t->completedByResource) {
-            $arr['completedByResource'] = $this->resourceToArray($t->completedByResource);
-        }
+        $arr['account'] = $t->account ? [
+            'id' => $t->account->id,
+            'companyName' => $t->account->companyName,
+            'phone' => $t->account->phone,
+            'website' => $t->account->website,
+        ] : null;
+        $arr['contact'] = $t->contact ? [
+            'id' => $t->contact->id,
+            'firstName' => $t->contact->firstName,
+            'lastName' => $t->contact->lastName,
+            'fullName' => $t->contact->fullName(),
+            'email' => $t->contact->email,
+            'phone' => $t->contact->phone,
+            'title' => $t->contact->title,
+        ] : null;
+        $arr['assignedResource'] = $t->assignedResource ? $this->resourceToArray($t->assignedResource) : null;
+        $arr['creatorResource'] = $t->creatorResource ? $this->resourceToArray($t->creatorResource) : null;
+        $arr['completedByResource'] = $t->completedByResource ? $this->resourceToArray($t->completedByResource) : null;
         return $arr;
     }
 

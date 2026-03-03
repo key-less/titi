@@ -81,10 +81,13 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
             ];
         }
 
-        $cacheKey = self::TICKETS_CACHE_KEY . '_' . md5(json_encode($filters))
+        $skipCache = !empty($filters['skipCache']);
+        $filtersForKey = $filters;
+        unset($filtersForKey['skipCache']);
+        $cacheKey = self::TICKETS_CACHE_KEY . '_' . md5(json_encode($filtersForKey))
             . '_q_' . md5(json_encode($queueIds))
             . ($openOnly ? '_o_' . md5(json_encode(config('autotask.open_status_ids', [1, 6, 9, 10]))) : '');
-        if ($this->cacheTtl > 0) {
+        if (!$skipCache && $this->cacheTtl > 0) {
             $cached = Cache::get($cacheKey);
             if ($cached !== null) {
                 return $cached;
@@ -103,7 +106,7 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
             }
         }
 
-        if ($this->cacheTtl > 0) {
+        if (!$skipCache && $this->cacheTtl > 0) {
             Cache::put($cacheKey, $tickets, $this->cacheTtl);
         }
 
@@ -124,17 +127,25 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
 
         $account = null;
         if ($ticket->companyId) {
-            $company = $this->client->get('Companies', $ticket->companyId);
-            if ($company) {
-                $account = $this->mapToAccount($company);
+            try {
+                $company = $this->client->get('Companies', (string) $ticket->companyId);
+                if ($company && !empty($company)) {
+                    $account = $this->mapToAccount($company);
+                }
+            } catch (\Throwable $e) {
+                // Dejar account null; el ticket se devuelve igual
             }
         }
 
         $contact = null;
         if ($ticket->contactId) {
-            $contactData = $this->client->get('Contacts', $ticket->contactId);
-            if ($contactData) {
-                $contact = $this->mapToContact($contactData);
+            try {
+                $contactData = $this->client->get('Contacts', (string) $ticket->contactId);
+                if ($contactData && !empty($contactData)) {
+                    $contact = $this->mapToContact($contactData);
+                }
+            } catch (\Throwable $e) {
+                // Dejar contact null
             }
         }
 
@@ -142,21 +153,33 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
         $creatorResource = null;
         $completedByResource = null;
         if ($ticket->assignedResourceId) {
-            $res = $this->client->get('Resources', $ticket->assignedResourceId);
-            if ($res) {
-                $assignedResource = $this->mapToResource($res);
+            try {
+                $res = $this->client->get('Resources', (string) $ticket->assignedResourceId);
+                if ($res && !empty($res)) {
+                    $assignedResource = $this->mapToResource($res);
+                }
+            } catch (\Throwable $e) {
+                // Dejar null
             }
         }
         if ($ticket->creatorResourceId) {
-            $res = $this->client->get('Resources', $ticket->creatorResourceId);
-            if ($res) {
-                $creatorResource = $this->mapToResource($res);
+            try {
+                $res = $this->client->get('Resources', (string) $ticket->creatorResourceId);
+                if ($res && !empty($res)) {
+                    $creatorResource = $this->mapToResource($res);
+                }
+            } catch (\Throwable $e) {
+                // Dejar null
             }
         }
         if ($ticket->completedByResourceId) {
-            $res = $this->client->get('Resources', $ticket->completedByResourceId);
-            if ($res) {
-                $completedByResource = $this->mapToResource($res);
+            try {
+                $res = $this->client->get('Resources', (string) $ticket->completedByResourceId);
+                if ($res && !empty($res)) {
+                    $completedByResource = $this->mapToResource($res);
+                }
+            } catch (\Throwable $e) {
+                // Dejar null
             }
         }
 

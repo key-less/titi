@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Application\Tickets\GetTicketWithSuggestions;
 use App\Application\Tickets\ListMyTickets;
 use App\Http\Controllers\Controller;
+use App\Infrastructure\AutoTask\AutoTaskApiClient;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -17,7 +18,7 @@ final class TicketController extends Controller
      * - open_only=1: solo tickets abiertos (New, In Progress, Waiting Customer, Waiting Vendor).
      * - period=24h|7d|6m|all: filtrar por createDate (últimas 24h, 7 días, 6 meses, o todos).
      */
-    public function index(Request $request, ListMyTickets $listMyTickets): JsonResponse
+    public function index(Request $request, ListMyTickets $listMyTickets, AutoTaskApiClient $autotaskClient): JsonResponse
     {
         $filters = [];
         $assignedParam = $request->input('assigned_resource_id');
@@ -53,11 +54,17 @@ final class TicketController extends Controller
             ], 200, ['Content-Type' => 'application/json; charset=UTF-8'], JSON_UNESCAPED_UNICODE);
         }
 
+        // Hidratar assignedResource para la lista (el repositorio solo lo devuelve en getTicketWithDetails)
+        $resourceMap = $this->fetchResourcesMap($tickets, $autotaskClient);
+
         $queueLabels = config('autotask.queue_labels', []);
-        $data = array_map(function ($t) use ($queueLabels) {
+        $data = array_map(function ($t) use ($queueLabels, $resourceMap) {
             $queueLabel = $t->queueId !== null
                 ? ($queueLabels[$t->queueId] ?? 'Queue ' . $t->queueId)
                 : null;
+            $assignedResource = $t->assignedResource ?? ($t->assignedResourceId && isset($resourceMap[$t->assignedResourceId])
+                ? $resourceMap[$t->assignedResourceId]
+                : null);
             return [
                 'id' => $t->id,
                 'ticketNumber' => $t->ticketNumber,
@@ -90,11 +97,7 @@ final class TicketController extends Controller
                     'email' => $t->contact->email,
                     'phone' => $t->contact->phone,
                 ] : null,
-                'assignedResource' => $t->assignedResource ? [
-                    'id' => $t->assignedResource->id,
-                    'fullName' => $t->assignedResource->fullName(),
-                    'initials' => $t->assignedResource->initials(),
-                ] : null,
+                'assignedResource' => $assignedResource,
             ];
         }, $tickets);
 
@@ -111,6 +114,60 @@ final class TicketController extends Controller
             'count' => $count,
             'message' => $message,
         ], 200, ['Content-Type' => 'application/json; charset=UTF-8'], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Obtiene un mapa id => {id, fullName, initials} de Resources (AutoTask) para los assignedResourceId de los tickets.
+     *
+     * @param array<\App\Domain\Entities\Ticket> $tickets
+     * @return array<int, array{id: int, fullName: string, initials: string}>
+     */
+    private function fetchResourcesMap(array $tickets, AutoTaskApiClient $client): array
+    {
+        $ids = [];
+        foreach ($tickets as $t) {
+            if ($t->assignedResourceId !== null && $t->assignedResource === null) {
+                $ids[$t->assignedResourceId] = true;
+            }
+        }
+        $ids = array_keys($ids);
+        if ($ids === []) {
+            return [];
+        }
+        try {
+            $filter = [
+                ['op' => 'in', 'field' => 'id', 'value' => array_map('strval', $ids)],
+            ];
+            $items = $client->query('Resources', $filter, 500);
+            $map = [];
+            foreach ($items as $item) {
+                $id = (int) ($item['id'] ?? $item['ID'] ?? 0);
+                if ($id === 0) {
+                    continue;
+                }
+                $first = trim($item['firstName'] ?? $item['FirstName'] ?? '');
+                $last = trim($item['lastName'] ?? $item['LastName'] ?? '');
+                $fullName = $first === '' && $last === '' ? ('Resource #' . $id) : trim($first . ' ' . $last);
+                $initials = '';
+                if ($first !== '') {
+                    $initials .= mb_substr($first, 0, 1);
+                }
+                if ($last !== '') {
+                    $initials .= mb_substr($last, 0, 1);
+                }
+                if ($initials === '') {
+                    $initials = (string) $id;
+                }
+                $map[$id] = [
+                    'id' => $id,
+                    'fullName' => $fullName,
+                    'initials' => strtoupper($initials),
+                ];
+            }
+            return $map;
+        } catch (\Throwable $e) {
+            return [];
+        }
     }
 
     /**

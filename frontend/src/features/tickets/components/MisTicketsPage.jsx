@@ -64,6 +64,7 @@ export function MisTicketsPage() {
   const [resources, setResources] = useState([]);
   const [statusLabels, setStatusLabels] = useState({});
   const [myResourceId, setMyResourceId] = useState(null);
+  const [autotaskTicketDetailUrl, setAutotaskTicketDetailUrl] = useState("");
 
   const assignedResourceId =
     assignedToFilter === "" ? undefined : assignedToFilter === "me" ? "me" : Number(assignedToFilter);
@@ -79,13 +80,16 @@ export function MisTicketsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [statusData, list, statusIdsData] = await Promise.all([fetchTicketStatus(), fetchResources(), fetchTicketStatusIds().catch(() => ({}))]);
+        const [statusData, resourcesData, statusIdsData] = await Promise.all([fetchTicketStatus(), fetchResources().then((r) => (Array.isArray(r) ? r : [])), fetchTicketStatusIds().catch(() => ({}))]);
         if (!cancelled) {
           if (statusData?.my_resource_id != null) setMyResourceId(statusData.my_resource_id);
-          if (Array.isArray(list)) setResources(list);
+          if (typeof statusData?.autotask_ticket_detail_url === "string") setAutotaskTicketDetailUrl(statusData.autotask_ticket_detail_url);
+          setResources(Array.isArray(resourcesData) ? resourcesData : []);
           if (statusIdsData && typeof statusIdsData === "object") setStatusLabels(statusIdsData);
         }
-      } catch (_) {}
+      } catch (_) {
+        if (!cancelled) setResources([]);
+      }
     })();
     return () => { cancelled = true; };
   }, []);
@@ -389,7 +393,7 @@ export function MisTicketsPage() {
                               </div>
                             )}
                             <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-                              <a href={`https://ww4.autotask.net/autotask/ServiceDesk/Ticket/TicketDetail.aspx?id=${ticketDetail.ticket.id}`} target="_blank" rel="noopener noreferrer" style={{ background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.2)", color: "#38bdf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>Ver en AutoTask →</a>
+                              <a href={`${autotaskTicketDetailUrl || "https://ww3.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx?Code=OpenTicketDetail&TicketID="}${ticketDetail.ticket.id}`} target="_blank" rel="noopener noreferrer" style={{ background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.2)", color: "#38bdf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>Ver en AutoTask →</a>
                               <Link to="/ia-asistente" style={{ background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.2)", color: "#818cf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>Preguntar a IA →</Link>
                             </div>
                           </>

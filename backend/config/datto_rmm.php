@@ -15,6 +15,12 @@ return [
     'cache_ttl' => (int) env('DATTO_RMM_CACHE_TTL', 300),
 
     /*
+    | Verificación SSL al llamar a la API de Datto RMM. En Windows suele fallar (cURL 60: unable to get local issuer certificate).
+    | Pon false solo en desarrollo si es necesario; en producción configura php.ini (curl.cainfo) con cacert.pem.
+    */
+    'verify_ssl' => filter_var(env('DATTO_RMM_VERIFY_SSL', true), FILTER_VALIDATE_BOOLEAN),
+
+    /*
     | Categorías de patch según la API (enum patchStatus en Device.patchManagement).
     | NoPolicy, NoData, RebootRequired, InstallError, ApprovedPending, FullyPatched
     */

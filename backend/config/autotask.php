@@ -6,8 +6,17 @@
 | Solo recursos con nivel "API User (API-only)" y Tracking identifier (Security tab) pueden usar la API.
 */
 
+$zoneUrl = rtrim((string) env('AUTOTASK_ZONE_URL', 'https://webservices3.autotask.net'));
+$webUrl = env('AUTOTASK_WEB_URL');
+if (!is_string($webUrl) || trim($webUrl) === '') {
+    // Derivar de zone_url: https://webservices3.autotask.net -> https://ww3.autotask.net
+    $webUrl = preg_match('/webservices(\d+)/i', $zoneUrl, $m) ? 'https://ww' . $m[1] . '.autotask.net' : 'https://ww3.autotask.net';
+}
+$webUrl = rtrim($webUrl, '/');
+
 return [
-    'zone_url' => rtrim((string) env('AUTOTASK_ZONE_URL', 'https://webservices3.autotask.net')),
+    'zone_url' => $zoneUrl,
+    'web_url' => $webUrl,
     'username' => is_string($u = env('AUTOTASK_USERNAME')) ? trim($u) : '',
     'secret' => is_string($s = env('AUTOTASK_SECRET')) ? trim($s) : '',
     'integration_code' => is_string($c = env('AUTOTASK_INTEGRATION_CODE')) ? trim($c) : '',

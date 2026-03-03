@@ -62,10 +62,14 @@ Route::prefix('tickets')->group(function () {
                 'secret_length' => $hasSecret ? strlen($secret) : 0,
                 'integration_code_length' => $hasCode ? strlen($code) : 0,
             ];
+            $webUrl = config('autotask.web_url', 'https://ww3.autotask.net');
+            $ticketDetailUrl = $webUrl . '/Autotask/AutotaskExtend/ExecuteCommand.aspx?Code=OpenTicketDetail&TicketID=';
             return response()->json([
                 'backend' => 'ok',
                 'autotask_configured' => $hasUser && $hasSecret && $hasCode,
                 'autotask_zone' => $zone,
+                'autotask_web_url' => $webUrl,
+                'autotask_ticket_detail_url' => $ticketDetailUrl,
                 'verify_ssl' => $verifySsl,
                 'my_resource_id' => null,
                 'credentials_check' => $credentials_check,
@@ -96,10 +100,34 @@ Route::prefix('tickets')->group(function () {
 });
 
 Route::get('/resources', function () {
+    $list = [];
     try {
         $client = app(AutoTaskApiClient::class);
-        $items = $client->query('Resources', [], 200);
-        $list = [];
+        $listMyTickets = app(\App\Application\Tickets\ListMyTickets::class);
+
+        $filter = [['op' => 'eq', 'field' => 'isActive', 'value' => true]];
+        $items = $client->query('Resources', $filter, 500);
+        if (empty($items)) {
+            $items = $client->query('Resources', [], 500);
+        }
+        if (empty($items)) {
+            $statusIds = array_values(array_unique(array_merge(
+                config('autotask.open_status_ids', [1, 6, 9, 10]),
+                config('autotask.resolved_status_ids', [13])
+            )));
+            $tickets = $listMyTickets->execute(['limit' => 500, 'status' => $statusIds]);
+            $ids = [];
+            foreach ($tickets as $t) {
+                if ($t->assignedResourceId && !isset($ids[$t->assignedResourceId])) {
+                    $ids[$t->assignedResourceId] = true;
+                }
+            }
+            $ids = array_keys($ids);
+            if (!empty($ids)) {
+                $items = $client->query('Resources', [['op' => 'in', 'field' => 'id', 'value' => array_map('strval', $ids)]], 500);
+            }
+        }
+
         foreach ($items as $item) {
             $id = (int) ($item['id'] ?? $item['ID'] ?? 0);
             if ($id === 0) {

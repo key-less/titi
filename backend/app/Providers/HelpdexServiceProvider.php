@@ -46,7 +46,7 @@ class HelpdexServiceProvider extends ServiceProvider
                 config('datto_rmm.api_secret', ''),
                 config('datto_rmm.client_id', 'public-client'),
                 config('datto_rmm.client_secret', 'public'),
-                filter_var(env('DATTO_RMM_VERIFY_SSL', true), FILTER_VALIDATE_BOOLEAN)
+                config('datto_rmm.verify_ssl', true)
             );
         });
     }
