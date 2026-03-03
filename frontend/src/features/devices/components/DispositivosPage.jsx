@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useDevices } from '../hooks/useDevices';
 import { fetchDeviceDetail, fetchDeviceAlerts } from '../api/devicesApi';
+import { ModuleErrorBanner } from '../../../shared/components/ModuleErrorBanner';
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -22,7 +23,7 @@ const NAV_ITEMS = [
   { icon: '◉', label: 'Parches', path: '/parches' },
   { icon: '◎', label: 'Dispositivos', path: '/dispositivos' },
   { icon: '⬡', label: 'IA Asistente', path: '/ia-asistente' },
-  { icon: '◇', label: 'Reportes', path: null },
+  { icon: '◇', label: 'Reportes', path: '/reportes' },
 ];
 
 export function DispositivosPage() {
@@ -147,12 +148,7 @@ export function DispositivosPage() {
               </div>
             </div>
 
-            {apiMessage && (
-              <div style={{ padding: '12px 16px', background: 'rgba(234,179,8,0.12)', borderRadius: 6, marginBottom: 16, fontFamily: 'monospace', fontSize: 12, color: '#eab308' }}>{apiMessage}</div>
-            )}
-            {error && (
-              <div style={{ padding: '12px 16px', background: 'rgba(239,68,68,0.12)', borderRadius: 6, marginBottom: 16, fontFamily: 'monospace', fontSize: 12, color: '#ef4444' }}>{error}</div>
-            )}
+            <ModuleErrorBanner error={error} apiMessage={apiMessage} module="devices" onRetry={refetch} retryLabel="↻ Actualizar" />
 
             {currentSiteSummary && (
               <div className="helpdex-card" style={{ padding: '22px 24px', marginBottom: 24 }}>

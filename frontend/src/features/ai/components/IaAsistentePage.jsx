@@ -68,7 +68,7 @@ export function IaAsistentePage() {
             { icon: '◉', label: 'Parches', path: '/parches' },
             { icon: '◎', label: 'Dispositivos', path: null },
             { icon: '⬡', label: 'IA Asistente', path: '/ia-asistente' },
-            { icon: '◇', label: 'Reportes', path: null },
+            { icon: '◇', label: 'Reportes', path: '/reportes' },
           ].map((item) => {
             const isActive = item.path === location.pathname || (item.path === '/' && (location.pathname === '/' || location.pathname === '/dashboard'));
             const content = (<><span style={{ fontSize: 14, opacity: 0.7 }}>{item.icon}</span>{item.label}</>);

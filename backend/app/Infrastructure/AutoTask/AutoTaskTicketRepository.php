@@ -66,6 +66,20 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
                 'value' => $filters['createDateGte'],
             ];
         }
+        if (!empty($filters['completedDateGte'])) {
+            $filter[] = [
+                'op' => 'gte',
+                'field' => 'completedDate',
+                'value' => $filters['completedDateGte'],
+            ];
+        }
+        if (!empty($filters['completedDateLte'])) {
+            $filter[] = [
+                'op' => 'lte',
+                'field' => 'completedDate',
+                'value' => $filters['completedDateLte'],
+            ];
+        }
 
         $cacheKey = self::TICKETS_CACHE_KEY . '_' . md5(json_encode($filters))
             . '_q_' . md5(json_encode($queueIds))
@@ -170,6 +184,7 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
             assignedResource: $assignedResource,
             creatorResource: $creatorResource,
             completedByResource: $completedByResource,
+            rawStatusLabel: $ticket->rawStatusLabel,
         );
     }
 
@@ -206,7 +221,22 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
             creatorResourceId: $this->intFrom($item, ['creatorResourceID', 'CreatorResourceID', 'CreatorResourceId']),
             completedByResourceId: $this->intFrom($item, ['completedByResourceID', 'CompletedByResourceID', 'CompletedByResourceId']),
             queueId: $this->intFrom($item, ['queueID', 'QueueID', 'QueueId']),
+            rawStatusLabel: $statusLabel,
         );
+    }
+
+    public function getTicketNotes(int|string $ticketId): array
+    {
+        try {
+            return $this->client->getTicketNotes($ticketId);
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
+    public function getResource(int $resourceId): ?array
+    {
+        return $this->client->get('Resources', $resourceId);
     }
 
     private function intFrom(array $item, array $keys): ?int

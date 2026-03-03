@@ -28,8 +28,9 @@ export function useTickets(options = {}) {
       setCount(total);
       if (data.message) setApiMessage(data.message);
     } catch (e) {
+      const isNetworkError = e.message === 'Failed to fetch' || e.name === 'TypeError' || e.status === 0;
       setError(e.message || 'Error al cargar tickets');
-      setBackendUnavailable(true);
+      setBackendUnavailable(!!isNetworkError);
       setTickets([]);
       setCount(0);
     } finally {

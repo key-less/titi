@@ -20,23 +20,8 @@ import {
 import { useTickets } from "../../tickets/hooks/useTickets";
 import { useTicketWithSuggestions } from "../../tickets/hooks/useTicketWithSuggestions";
 import { usePatches } from "../../patches/hooks/usePatches";
+import { useDashboardMetrics } from "../hooks/useDashboardMetrics";
 import { fetchResources, fetchTicketStatus } from "../../tickets/api/ticketsApi";
-
-// Métricas, gráficos y parches se rellenan desde AutoTask y Datto RMM. Vacíos hasta conectar APIs.
-const EMPTY_METRICS = {
-  avgResponseTime: "—",
-  avgResponseDelta: 0,
-  resolvedToday: 0,
-  resolvedWeek: 0,
-  resolvedMonth: 0,
-  openTickets: 0,
-  slaBreached: 0,
-  slaDelta: 0,
-  hoursToday: 0,
-  hoursWeek: 0,
-};
-const EMPTY_RESPONSE_TIME_DATA = [];
-const EMPTY_WEEKLY_DATA = [];
 
 // Helper: formatea fecha para "Resuelto" / "Última actividad"
 function formatRelative(dateStr) {
@@ -177,6 +162,25 @@ export function Dashboard() {
   }, []);
   const { data: ticketDetail, loading: detailLoading, error: detailError, loadTicket: loadTicketDetail, clear: clearDetail } = useTicketWithSuggestions();
   const { patches: patchData } = usePatches();
+  const { tickets: metricsTickets, patches: metricsPatches, slaBreached: metricsSlaBreached, generatedAt: metricsGeneratedAt, refetch: refetchMetrics } = useDashboardMetrics({ refetchIntervalMs: 60000 });
+
+  const openTicketsCount = metricsTickets.openTickets ?? 0;
+  const resolvedTodayCount = metricsTickets.resolvedToday ?? 0;
+  const resolvedWeekCount = metricsTickets.resolvedWeek ?? 0;
+  const resolvedMonthCount = metricsTickets.resolvedMonth ?? 0;
+  const weeklyChartData = Array.isArray(metricsTickets.weeklyChart) && metricsTickets.weeklyChart.length > 0
+    ? metricsTickets.weeklyChart
+    : [...Array(7)].map((_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - (6 - i));
+        return { day: d.toLocaleDateString("es", { weekday: "short" }), resolved: 0, open: 0 };
+      });
+  const responseTimeChartData = Array.isArray(metricsTickets.responseTimeChart) && metricsTickets.responseTimeChart.length > 0
+    ? metricsTickets.responseTimeChart
+    : [];
+  const avgResponseMinutes = responseTimeChartData.length > 0
+    ? Math.round(responseTimeChartData.reduce((s, d) => s + (d.minutes || 0), 0) / responseTimeChartData.length)
+    : null;
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -261,7 +265,7 @@ export function Dashboard() {
             { icon: "◉", label: "Parches", path: "/parches" },
             { icon: "◎", label: "Dispositivos", path: "/dispositivos" },
             { icon: "⬡", label: "IA Asistente", path: "/ia-asistente" },
-            { icon: "◇", label: "Reportes", path: null },
+            { icon: "◇", label: "Reportes", path: "/reportes" },
           ].map((item) => {
             const isActive = item.path ? location.pathname === item.path || (item.path === "/" && (location.pathname === "/" || location.pathname === "/dashboard")) : false;
             const content = (
@@ -352,7 +356,7 @@ export function Dashboard() {
                 {fmt(time)}
               </div>
               <button
-                onClick={() => refetchTickets()}
+                onClick={() => { refetchTickets(); refetchMetrics(); }}
                 style={{
                   background: "#0ea5e9",
                   color: "#fff",
@@ -380,28 +384,29 @@ export function Dashboard() {
             }}
           >
             <div className="helpdex-card" style={{ padding: "20px 22px" }}>
-              <div className="helpdex-label" style={{ marginBottom: 10 }}>Tiempo Resp. Avg</div>
-              <div className="metric-value" style={{ color: "#22d3ee" }}>{EMPTY_METRICS.avgResponseTime}</div>
+              <div className="helpdex-label" style={{ marginBottom: 10 }}>Tiempo resolución (avg)</div>
+              <div className="metric-value" style={{ color: "#22d3ee" }}>
+                {avgResponseMinutes != null ? `${avgResponseMinutes}m` : "—"}
+              </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
-                <span style={{ fontSize: 11, color: "#334155", fontFamily: "monospace" }}>
-                  {EMPTY_METRICS.avgResponseDelta !== 0 ? `▼ ${Math.abs(EMPTY_METRICS.avgResponseDelta)}%` : "—"}
+                <span style={{ fontSize: 10, color: "#475569", fontFamily: "monospace" }}>
+                  {avgResponseMinutes != null ? "Últimos 7 días · AutoTask" : "Resueltos esta semana"}
                 </span>
-                <span style={{ fontSize: 10, color: "#334155" }}>vs ayer</span>
               </div>
             </div>
             <div className="helpdex-card" style={{ padding: "20px 22px" }}>
               <div className="helpdex-label" style={{ marginBottom: 10 }}>Resueltos Hoy</div>
               <div className="metric-value" style={{ color: "#22c55e" }}>
-                <Ticker value={EMPTY_METRICS.resolvedToday} />
+                <Ticker value={resolvedTodayCount} />
               </div>
               <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                /{EMPTY_METRICS.resolvedWeek} esta semana
+                /{resolvedWeekCount} esta semana · AutoTask
               </div>
             </div>
             <div className="helpdex-card" style={{ padding: "20px 22px" }}>
               <div className="helpdex-label" style={{ marginBottom: 10 }}>Tickets Abiertos</div>
               <div className="metric-value" style={{ color: "#f97316" }}>
-                <Ticker value={EMPTY_METRICS.openTickets} />
+                <Ticker value={openTicketsCount} />
               </div>
               <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
                 AutoTask · en vivo
@@ -411,28 +416,27 @@ export function Dashboard() {
               className="helpdex-card"
               style={{
                 padding: "20px 22px",
-                borderColor: EMPTY_METRICS.slaBreached > 0 ? "#3b1a1a" : "#1a2744",
+                borderColor: (metricsSlaBreached ?? 0) > 0 ? "#3b1a1a" : "#1a2744",
               }}
             >
               <div className="helpdex-label" style={{ marginBottom: 10 }}>SLA Breach</div>
               <div
                 className="metric-value"
-                style={{ color: EMPTY_METRICS.slaBreached > 0 ? "#ef4444" : "#22c55e" }}
+                style={{ color: (metricsSlaBreached ?? 0) > 0 ? "#ef4444" : "#22c55e" }}
               >
-                <Ticker value={EMPTY_METRICS.slaBreached} />
+                <Ticker value={metricsSlaBreached ?? 0} />
               </div>
               <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                {EMPTY_METRICS.slaBreached > 0 ? "⚠ Requiere atención" : "✓ Dentro del SLA"}
+                {(metricsSlaBreached ?? 0) > 0 ? "⚠ Requiere atención" : "✓ Dentro del SLA"}
               </div>
             </div>
             <div className="helpdex-card" style={{ padding: "20px 22px" }}>
-              <div className="helpdex-label" style={{ marginBottom: 10 }}>Horas Trabajadas</div>
+              <div className="helpdex-label" style={{ marginBottom: 10 }}>Dispositivos RMM</div>
               <div className="metric-value" style={{ color: "#818cf8" }}>
-                {EMPTY_METRICS.hoursToday}
-                <span style={{ fontSize: 16, fontWeight: 400, color: "#475569" }}>h</span>
+                <Ticker value={metricsPatches?.devicesTotal ?? 0} />
               </div>
               <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                {EMPTY_METRICS.hoursWeek}h esta semana
+                Datto RMM · total cuenta
               </div>
             </div>
           </div>
@@ -454,16 +458,17 @@ export function Dashboard() {
                     className="section-title"
                     style={{ marginBottom: 4, paddingBottom: 0, borderBottom: "none" }}
                   >
-                    TIEMPO DE RESPUESTA — HOY
+                    TIEMPO DE RESOLUCIÓN — ÚLTIMOS 7 DÍAS
                   </div>
                   <div style={{ fontFamily: "monospace", fontSize: 10, color: "#1e4976" }}>
-                    vs umbral SLA (30 min)
+                    Promedio minutos (creación → cierre) · línea roja = SLA 30 min
                   </div>
                 </div>
                 <LiveDot />
               </div>
+              <div style={{ position: "relative", width: "100%", height: 180 }}>
               <ResponsiveContainer width="100%" height={180}>
-                <AreaChart data={EMPTY_RESPONSE_TIME_DATA}>
+                <AreaChart data={responseTimeChartData}>
                   <defs>
                     <linearGradient id="gradCyan" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.25} />
@@ -490,7 +495,7 @@ export function Dashboard() {
                     strokeWidth={1}
                     strokeDasharray="6 3"
                     dot={false}
-                    name="SLA"
+                    name="SLA (min)"
                   />
                   <Area
                     dataKey="minutes"
@@ -503,11 +508,17 @@ export function Dashboard() {
                   />
                 </AreaChart>
               </ResponsiveContainer>
+                {responseTimeChartData.length === 0 && (
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace", fontSize: 11, color: "#475569", pointerEvents: "none" }}>
+                    Sin datos (resueltos esta semana)
+                  </div>
+                )}
+              </div>
             </div>
             <div className="helpdex-card" style={{ padding: "22px 24px" }}>
               <div className="section-title">TICKETS — SEMANA ACTUAL</div>
               <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={EMPTY_WEEKLY_DATA} barGap={4}>
+                <BarChart data={weeklyChartData} barGap={4}>
                   <CartesianGrid stroke="#0f1e35" strokeDasharray="4 4" vertical={false} />
                   <XAxis
                     dataKey="day"
@@ -563,9 +574,9 @@ export function Dashboard() {
               <div className="section-title">RESUMEN MENSUAL</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 {[
-                  { label: "Tickets resueltos", value: EMPTY_METRICS.resolvedMonth, color: "#22c55e", suffix: "" },
-                  { label: "Horas facturadas", value: 0, color: "#818cf8", suffix: "h" },
-                  { label: "SLA cumplido", value: 0, color: "#22d3ee", suffix: "%" },
+                  { label: "Tickets resueltos", value: resolvedMonthCount, color: "#22c55e", suffix: "", max: Math.max(resolvedMonthCount, 50) },
+                  { label: "Horas facturadas", value: "—", color: "#818cf8", suffix: "h", max: 1 },
+                  { label: "SLA cumplido", value: "—", color: "#22d3ee", suffix: "%", max: 1 },
                 ].map((m) => (
                   <div key={m.label}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -580,18 +591,14 @@ export function Dashboard() {
                           color: m.color,
                         }}
                       >
-                        {m.value}
-                        {m.suffix}
+                        {typeof m.value === "number" ? m.value + m.suffix : m.value}
                       </span>
                     </div>
                     <div className="patch-bar">
                       <div
                         style={{
                           height: "100%",
-                          width: `${Math.min(
-                            (m.value / (m.suffix === "%" ? 100 : m.suffix === "h" ? 200 : 300)) * 100,
-                            100
-                          )}%`,
+                          width: `${typeof m.value === "number" && m.max > 0 ? Math.min((m.value / m.max) * 100, 100) : 0}%`,
                           background: m.color,
                           opacity: 0.8,
                           borderRadius: 3,
@@ -935,13 +942,16 @@ export function Dashboard() {
                                 </ul>
                               </div>
                             )}
-                            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                            <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+                              <Link to={`/mis-tickets?ticket=${ticketDetail.ticket.id}`} style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>
+                                Ver detalle en Mis Tickets →
+                              </Link>
                               <a href={`https://ww4.autotask.net/autotask/ServiceDesk/Ticket/TicketDetail.aspx?id=${ticketDetail.ticket.id}`} target="_blank" rel="noopener noreferrer" style={{ background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.2)", color: "#38bdf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>
                                 Ver en AutoTask →
                               </a>
-                              <a href="/ia-asistente" style={{ background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.2)", color: "#818cf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>
+                              <Link to="/ia-asistente" style={{ background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.2)", color: "#818cf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>
                                 Preguntar a IA →
-                              </a>
+                              </Link>
                             </div>
                           </>
                         ) : null}
@@ -963,7 +973,7 @@ export function Dashboard() {
               letterSpacing: 2,
             }}
           >
-            HELPDEX v0.1.0 · AUTOTASK CONNECTED · DATTO RMM CONNECTED · LAST SYNC 00:43s AGO
+            HELPDEX v0.1.0 · AUTOTASK · DATTO RMM · Última actualización métricas: {metricsGeneratedAt ? new Date(metricsGeneratedAt).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}
           </div>
         </main>
       </div>

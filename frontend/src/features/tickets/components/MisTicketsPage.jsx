@@ -2,10 +2,11 @@
  * Mis Tickets — Listado con selector de período (24h, 7d, 6m, todos).
  */
 import { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import { useTickets } from "../hooks/useTickets";
 import { useTicketWithSuggestions } from "../hooks/useTicketWithSuggestions";
 import { fetchResources, fetchTicketStatus, fetchTicketStatusIds } from "../api/ticketsApi";
+import { ModuleErrorBanner } from "../../../shared/components/ModuleErrorBanner";
 
 const PERIOD_OPTIONS = [
   { value: "24h", label: "Últimas 24 horas" },
@@ -42,10 +43,20 @@ const statusColor = {
   "Waiting Vendor": "#eab308",
   "Work Complete": "#22c55e",
   "New": "#22d3ee",
+  "Waiting Approval": "#94a3b8",
+  "Dispatched": "#818cf8",
+  "Change Order": "#a78bfa",
+  "Customer Note Added": "#f472b6",
+  "Escalate": "#fb923c",
+  "Waiting Materials": "#eab308",
+  "On Hold": "#64748b",
+  "RMM Resolved": "#22c55e",
 };
 
 export function MisTicketsPage() {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const ticketFromUrl = searchParams.get("ticket");
   const [period, setPeriod] = useState("7d");
   const [activeTicket, setActiveTicket] = useState(null);
   const [assignedToFilter, setAssignedToFilter] = useState("");
@@ -84,6 +95,19 @@ export function MisTicketsPage() {
     if (activeTicket) loadTicketDetail(activeTicket);
     else clearDetail();
   }, [activeTicket, loadTicketDetail, clearDetail]);
+
+  useEffect(() => {
+    if (ticketFromUrl && tickets.length > 0) {
+      const id = Number(ticketFromUrl) || ticketFromUrl;
+      const exists = tickets.some((t) => String(t.id) === String(id));
+      if (exists) setActiveTicket(id);
+      setSearchParams((prev) => {
+        const p = new URLSearchParams(prev);
+        p.delete("ticket");
+        return p;
+      }, { replace: true });
+    }
+  }, [ticketFromUrl, tickets, setSearchParams]);
 
   return (
     <>
@@ -129,7 +153,7 @@ export function MisTicketsPage() {
             { icon: "◉", label: "Parches", path: "/parches" },
             { icon: "◎", label: "Dispositivos", path: "/dispositivos" },
             { icon: "⬡", label: "IA Asistente", path: "/ia-asistente" },
-            { icon: "◇", label: "Reportes", path: null },
+            { icon: "◇", label: "Reportes", path: "/reportes" },
           ].map((item) => {
             const isActive = item.path ? (location.pathname === item.path || (item.path === "/" && (location.pathname === "/" || location.pathname === "/dashboard"))) : false;
             const content = (<><span style={{ fontSize: 14, opacity: 0.7 }}>{item.icon}</span>{item.label}</>);
@@ -248,14 +272,11 @@ export function MisTicketsPage() {
             <div style={{ borderBottom: "1px solid #0f1e35", marginBottom: 16 }} />
             {backendUnavailable && (
               <div style={{ padding: "12px 16px", background: "rgba(249,115,22,0.12)", borderRadius: 6, marginBottom: 12, fontFamily: "monospace", fontSize: 12, color: "#f97316" }}>
-                Backend no disponible. Inicia el backend con <strong>php artisan serve</strong> en la carpeta backend.
+                Backend no disponible. Inicia el backend con <strong>php artisan serve</strong> en la carpeta backend. Comprueba también VITE_API_URL en el frontend.
               </div>
             )}
-            {apiMessage && !backendUnavailable && (
-              <div style={{ padding: "12px 16px", background: "rgba(14,165,233,0.12)", borderRadius: 6, marginBottom: 12, fontFamily: "monospace", fontSize: 12, color: "#38bdf8" }}>{apiMessage}</div>
-            )}
-            {ticketsError && !backendUnavailable && !apiMessage && (
-              <div style={{ padding: "12px 16px", background: "rgba(239,68,68,0.1)", borderRadius: 6, marginBottom: 12, fontFamily: "monospace", fontSize: 12, color: "#ef4444" }}>{ticketsError}</div>
+            {!backendUnavailable && (ticketsError || apiMessage) && (
+              <ModuleErrorBanner error={ticketsError} apiMessage={apiMessage} module="tickets" onRetry={refetchTickets} retryLabel="↻ Actualizar" />
             )}
             <div style={{ display: "grid", gridTemplateColumns: "100px 1fr 120px 100px 90px 70px 80px", gap: 12, padding: "0 16px 10px" }}>
               {["TICKET", "TÍTULO / ESTATUS", "COLA", "PRIORIDAD", "ESTADO", "ACTIVIDAD", "TECH"].map((h) => (
@@ -351,9 +372,25 @@ export function MisTicketsPage() {
                                 </ul>
                               </div>
                             )}
-                            <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                            {Array.isArray(ticketDetail.ticket.notes) && ticketDetail.ticket.notes.length > 0 && (
+                              <div style={{ marginBottom: 14 }}>
+                                <div style={{ fontFamily: "monospace", fontSize: 9, color: "#64748b", letterSpacing: 1, marginBottom: 8 }}>RESPUESTAS / NOTAS</div>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                                  {ticketDetail.ticket.notes.map((note, idx) => (
+                                    <div key={note.id ?? idx} style={{ background: "#0f1e35", border: "1px solid #1a2744", borderRadius: 6, padding: "10px 14px" }}>
+                                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                                        <span style={{ fontFamily: "monospace", fontSize: 11, color: "#38bdf8" }}>{note.creatorName ?? "—"}</span>
+                                        <span style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }}>{note.createDate ? formatRelative(note.createDate) : "—"}</span>
+                                      </div>
+                                      <p style={{ fontFamily: "monospace", fontSize: 12, color: "#cbd5e1", lineHeight: 1.6, margin: 0, whiteSpace: "pre-wrap" }}>{note.description || "—"}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
                               <a href={`https://ww4.autotask.net/autotask/ServiceDesk/Ticket/TicketDetail.aspx?id=${ticketDetail.ticket.id}`} target="_blank" rel="noopener noreferrer" style={{ background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.2)", color: "#38bdf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>Ver en AutoTask →</a>
-                              <a href="/ia-asistente" style={{ background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.2)", color: "#818cf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>Preguntar a IA →</a>
+                              <Link to="/ia-asistente" style={{ background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.2)", color: "#818cf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>Preguntar a IA →</Link>
                             </div>
                           </>
                         ) : null}

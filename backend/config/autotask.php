@@ -61,6 +61,12 @@ return [
     'closed_status_ids' => [12, 13, 14],
 
     /*
+    | IDs de estado para contar como "resueltos" en el Dashboard (Resueltos Hoy/Semana/Mes).
+    | Solo tickets en estado Complete (13) cuentan como resueltos. Ajusta si tu flujo usa otros.
+    */
+    'resolved_status_ids' => [13],
+
+    /*
     | IDs de estado para "tickets abiertos" en la query a la API (Dashboard / open_only=1).
     | La API solo devuelve tickets con status IN estos IDs (filter en la request, no filtro en PHP).
     | Por defecto: New (1), In Progress (6), Waiting Customer (9), Waiting Vendor (10).

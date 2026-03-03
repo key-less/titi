@@ -62,8 +62,9 @@ php artisan key:generate
 
 Edita `.env` y rellena:
 
-- **Laravel:** `APP_NAME`, `APP_URL` (opcional).
+- **Laravel:** `APP_NAME`, `APP_URL` (opcional). Opcional: `CACHE_STORE=file` (por defecto) o `array` para no persistir caché.
 - **AutoTask:** `AUTOTASK_ZONE_URL`, `AUTOTASK_USERNAME`, `AUTOTASK_SECRET`, `AUTOTASK_INTEGRATION_CODE`.
+- **Datto RMM:** `DATTO_RMM_API_URL` (ej. https://vidal-api.centrastage.net), `DATTO_RMM_API_KEY`, `DATTO_RMM_API_SECRET`. Opcional: `DATTO_RMM_VERIFY_SSL=false` si en Windows falla cURL 60 (SSL). Necesario para Parches, Dispositivos y datos RMM en Reportes.
 - **IA:** `OPENAI_API_KEY` (para sugerencias y chat).
 
 ### 3. Ejecutar el servidor
@@ -95,6 +96,12 @@ La API quedará en **http://localhost:8000**. El frontend (Vite) tiene proxy a `
 2. Prueba primero **http://127.0.0.1:8000/ping** (ruta web, texto plano). Si ahí tampoco ves nada, prueba desde PowerShell: `Invoke-WebRequest -Uri http://127.0.0.1:8000/ping -UseBasicParsing | Select-Object -ExpandProperty Content`
 3. Si usas extensión "Pretty-print" o similar para JSON, desactívala o prueba en ventana de incógnito.
 
+## Caché y limpieza (Datto RMM / Windows)
+
+- **CACHE_STORE:** Por defecto Laravel usa `file` (`.env`: `CACHE_STORE=file`). La caché de Datto RMM (sites, dispositivos, token OAuth) y la de reportes se guardan ahí. Si en desarrollo quieres evitar disco, puedes usar `CACHE_STORE=array` (no persiste entre peticiones).
+- **Si `php artisan cache:clear` falla con permisos** (por ejemplo en Windows con carpeta en OneDrive): ejecuta la terminal como Administrador o borra manualmente el contenido de `storage/framework/cache/data` (por ejemplo con PowerShell: `Remove-Item -Path storage\framework\cache\data\* -Recurse -Force` desde la carpeta `backend`). Cerrar el servidor PHP antes de borrar evita bloqueos.
+- **Solo limpiar caché de Datto RMM:** Las claves son `datto_rmm_sites`, `datto_rmm_devices_*`, `datto_rmm_devices_sites_summary_*`, `datto_rmm_devices_list_*` y `datto_rmm_access_token`. Puedes usar `php artisan tinker` y ejecutar `Cache::forget('datto_rmm_sites'); Cache::forget('datto_rmm_access_token');` y, si necesitas, limpiar las de devices (las claves con sufijo dependen del site). O bien ejecutar `php artisan cache:clear` si los permisos lo permiten.
+
 ## Endpoints Fase 1
 
 | Método | Ruta | Descripción |
@@ -103,6 +110,13 @@ La API quedará en **http://localhost:8000**. El frontend (Vite) tiene proxy a `
 | GET | /api/tickets/{id} | Ticket con cuenta, contacto, técnicos y sugerencias IA |
 | GET | /api/tickets/status | Estado de configuración AutoTask (diagnóstico) |
 | GET | /api/tickets/zone-info?username=... | Obtiene la URL de zona correcta para tu cuenta (útil si hay 401) |
+| GET | /api/patches/sites | Lista de sites de Datto RMM (para filtros). Cache 5 min. |
+| GET | /api/patches | Dispositivos con estado de parches. Query: `site_uid` (opcional). Devuelve `devices`, `summary` por categoría, `summaryLabels`, `patches` (legacy Workstations/Servers), `lastUpdated`. Cache 5 min. Requiere DATTO_RMM_* en .env. |
+| GET | /api/devices/sites-summary | Resumen por site: total, workstation, network, esxi, printer, grupos. Query: `site_uid` (opcional). Cache 5 min. |
+| GET | /api/devices | Lista de dispositivos. Query: `site_uid` (opcional). Incluye `portalUrl` por dispositivo. |
+| GET | /api/devices/{deviceUid} | Detalle de un dispositivo (SO, último usuario, IP, hardware, portalUrl). |
+| GET | /api/devices/{deviceUid}/alerts | Alertas del dispositivo. Query: `open=false` para resueltas. |
+| GET | /api/reports/summary | Reporte agregado: tickets por estado, dispositivos por site/tipo, parches por categoría. Query: `period=24h|7d|6m`. |
 | POST | /api/ai/chat | Chat con asistente IA. Body: `{ "message": "...", "ticketContext": "opcional" }` |
 
 ## Estatus de tickets soportados

@@ -17,4 +17,15 @@ interface TicketRepositoryInterface
      * Obtiene un ticket por ID con cuenta, contacto y recursos (asignado, creador, completado).
      */
     public function getTicketWithDetails(int|string $id): ?Ticket;
+
+    /**
+     * Notas/respuestas del ticket (TicketNotes en AutoTask).
+     * @return array<int, array>
+     */
+    public function getTicketNotes(int|string $ticketId): array;
+
+    /**
+     * Recurso (técnico) por ID para mostrar autor de notas. Devuelve array con firstName, lastName, etc. o null.
+     */
+    public function getResource(int $resourceId): ?array;
 }

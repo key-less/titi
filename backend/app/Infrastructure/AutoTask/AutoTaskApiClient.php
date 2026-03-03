@@ -136,6 +136,18 @@ final class AutoTaskApiClient
     }
 
     /**
+     * Notas de un ticket (respuestas, actividad). Query TicketNotes por ticketID.
+     * @return array<int, array>
+     */
+    public function getTicketNotes(int|string $ticketId): array
+    {
+        $filter = [
+            ['op' => 'eq', 'field' => 'ticketID', 'value' => (string) $ticketId],
+        ];
+        return $this->query('TicketNotes', $filter, 100);
+    }
+
+    /**
      * Obtiene la URL de zona para el usuario (solo requiere Username; no Secret ni Integration code).
      * Útil para configurar AUTOTASK_ZONE_URL correctamente.
      *

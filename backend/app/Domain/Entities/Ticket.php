@@ -6,6 +6,9 @@ use App\Domain\Enums\TicketStatus;
 
 final class Ticket
 {
+    /** Etiqueta de estado tal como viene de AutoTask (config status_labels). Se usa cuando status enum es null. */
+    public ?string $rawStatusLabel = null;
+
     public function __construct(
         public int|string $id,
         public string $ticketNumber,
@@ -36,10 +39,17 @@ final class Ticket
         public ?Resource $creatorResource = null,
         /** Recurso que completó el ticket */
         public ?Resource $completedByResource = null,
-    ) {}
+        /** Etiqueta de estado desde AutoTask (cuando el enum no cubre el ID). */
+        ?string $rawStatusLabel = null,
+    ) {
+        $this->rawStatusLabel = $rawStatusLabel;
+    }
 
     public function statusLabel(): string
     {
-        return $this->status?->label() ?? 'Unknown';
+        if ($this->status !== null) {
+            return $this->status->label();
+        }
+        return $this->rawStatusLabel ?? 'Unknown';
     }
 }

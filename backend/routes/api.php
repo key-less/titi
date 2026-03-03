@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AiAssistantController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DeviceController;
 use App\Http\Controllers\Api\PatchController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TicketController;
 use App\Infrastructure\AutoTask\AutoTaskApiClient;
 use Illuminate\Support\Facades\Route;
@@ -134,6 +136,9 @@ Route::prefix('devices')->group(function () {
     Route::get('/{deviceUid}/alerts', [DeviceController::class, 'alerts']);
     Route::get('/{deviceUid}', [DeviceController::class, 'show']);
 });
+
+Route::get('/reports/summary', [ReportController::class, 'summary']);
+Route::get('/dashboard/metrics', [DashboardController::class, 'metrics']);
 
 Route::prefix('ai')->group(function () {
     Route::post('/chat', [AiAssistantController::class, 'chat']);

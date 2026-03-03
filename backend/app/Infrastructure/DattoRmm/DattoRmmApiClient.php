@@ -119,12 +119,21 @@ final class DattoRmmApiClient
         return $all;
     }
 
+    private const DEVICES_CACHE_TTL = 300; // 5 min
+    private const DEVICES_CACHE_PREFIX = 'datto_rmm_devices_';
+
     /**
-     * Lista dispositivos: de toda la cuenta o de un site.
+     * Lista dispositivos: de toda la cuenta o de un site. Cacheado 5 min para reducir lentitud.
      * GET /v2/account/devices o GET /v2/site/{siteUid}/devices — la API usa página base 0.
      */
     public function getDevices(?string $siteUid = null): array
     {
+        $cacheKey = self::DEVICES_CACHE_PREFIX . ($siteUid ?? 'all');
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
         $all = [];
         $page = 0;
         $max = 250;
@@ -148,6 +157,7 @@ final class DattoRmmApiClient
             $page++;
         } while (true);
 
+        Cache::put($cacheKey, $all, self::DEVICES_CACHE_TTL);
         return $all;
     }
 

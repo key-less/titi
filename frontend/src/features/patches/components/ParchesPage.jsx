@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { usePatches } from "../hooks/usePatches";
+import { ModuleErrorBanner } from "../../../shared/components/ModuleErrorBanner";
 
 const STATUS_ORDER = ['InstallError', 'NoPolicy', 'NoData', 'RebootRequired', 'ApprovedPending', 'FullyPatched'];
 const STATUS_COLORS = {
@@ -70,7 +71,7 @@ export function ParchesPage() {
             { icon: "◉", label: "Parches", path: "/parches" },
             { icon: "◎", label: "Dispositivos", path: "/dispositivos" },
             { icon: "⬡", label: "IA Asistente", path: "/ia-asistente" },
-            { icon: "◇", label: "Reportes", path: null },
+            { icon: "◇", label: "Reportes", path: "/reportes" },
           ].map((item) => {
             const isActive = item.path ? (location.pathname === item.path || (item.path === "/" && (location.pathname === "/" || location.pathname === "/dashboard"))) : false;
             const content = (<><span style={{ fontSize: 14, opacity: 0.7 }}>{item.icon}</span>{item.label}</>);
@@ -116,12 +117,7 @@ export function ParchesPage() {
             </div>
           </div>
 
-          {apiMessage && (
-            <div style={{ padding: "12px 16px", background: "rgba(234,179,8,0.12)", borderRadius: 6, marginBottom: 16, fontFamily: "monospace", fontSize: 12, color: "#eab308" }}>{apiMessage}</div>
-          )}
-          {error && (
-            <div style={{ padding: "12px 16px", background: "rgba(239,68,68,0.12)", borderRadius: 6, marginBottom: 16, fontFamily: "monospace", fontSize: 12, color: "#ef4444" }}>{error}</div>
-          )}
+          <ModuleErrorBanner error={error} apiMessage={apiMessage} module="patches" onRetry={refetch} retryLabel="↻ Actualizar" />
 
           {lastUpdated && (
             <div style={{ marginBottom: 16, fontFamily: "monospace", fontSize: 10, color: "#475569" }}>
