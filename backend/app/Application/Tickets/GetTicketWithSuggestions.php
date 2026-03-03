@@ -23,10 +23,15 @@ final class GetTicketWithSuggestions
             return null;
         }
 
-        $suggestions = $this->suggestionsService->getSuggestionsForTicket(
-            $ticket->title,
-            $ticket->description
-        );
+        try {
+            $suggestions = $this->suggestionsService->getSuggestionsForTicket(
+                $ticket->title,
+                $ticket->description
+            );
+        } catch (\Throwable $e) {
+            // Si falla la IA (SSL, API key, etc.) devolvemos el detalle del ticket sin sugerencias
+            $suggestions = [];
+        }
 
         return [
             'ticket' => $this->ticketToArray($ticket),

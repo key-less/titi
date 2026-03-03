@@ -243,10 +243,10 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
         }
         $id = (int) $priorityId;
         $map = config('autotask.priority_labels', [
-            1 => 'Low',
-            2 => 'Medium',
-            3 => 'High',
-            4 => 'Critical',
+            1 => 'Normal',
+            2 => 'Media',
+            3 => 'Alta',
+            4 => 'Critica',
         ]);
         return $map[$id] ?? 'Priority ' . $id;
     }

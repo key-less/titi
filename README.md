@@ -9,7 +9,7 @@ Sistema personal e interactivo para facilitar el trabajo diario de Help Desk: ge
 | **frontend/** | Aplicación React (Vite): dashboard, futuras vistas de tickets, parches, IA. |
 | **backend/** | Estructura para API Laravel con Clean Architecture (Domain, Application, Infrastructure, Presentation). |
 | **ARCHITECTURE.md** | Visión, stack, estructura de carpetas y convenciones para mantener coherencia entre chats. |
-| **dashboard.jsx** | Mockup original en React; la versión integrada está en `frontend/src/features/dashboard/`. |
+| **frontend/src/features/dashboard/** | **Dashboard React = base e inspiración del proyecto.** Referencia visual y de flujo; desde aquí se orquesta todo. Datos desde AutoTask y Datto RMM (APIs). |
 
 ## Stack
 
@@ -19,7 +19,7 @@ Sistema personal e interactivo para facilitar el trabajo diario de Help Desk: ge
 
 ## Inicio rápido
 
-### Frontend (ya funcional con datos mock)
+### Frontend (dashboard como referencia; tickets desde AutoTask; métricas/gráficos vacíos hasta conectar APIs)
 
 ```bash
 cd frontend
@@ -49,7 +49,8 @@ Abre http://localhost:5173
 
 ## Próximos pasos sugeridos
 
-1. Implementar en Laravel los casos de uso y adaptadores (AutoTask, Datto RMM, IA).
-2. Sustituir los datos mock del frontend por llamadas al API.
-3. Añadir rutas y vistas para Mis Tickets, Parches, IA Asistente (chat) y Reportes.
+1. **Métricas y gráficos en el Dashboard:** Endpoints en Laravel que consuman AutoTask (resueltos hoy/semana, SLA breach, tiempo de respuesta, horas trabajadas) y rellenar las cards y gráficos del dashboard.
+2. Mantener el dashboard como referencia: nuevas pantallas y módulos alineados con su estilo (HELPDEX, paleta, Syne, JetBrains Mono).
+3. Añadir rutas y vistas para Mis Tickets, IA Asistente (chat) y Reportes según el diseño del dashboard.
 4. Conectar autenticación con Supabase.
+5. **Parches (Datto RMM):** en espera; prioridad actual son las métricas visuales con AutoTask.

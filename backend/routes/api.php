@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Api\AiAssistantController;
+use App\Http\Controllers\Api\DeviceController;
+use App\Http\Controllers\Api\PatchController;
 use App\Http\Controllers\Api\TicketController;
 use App\Infrastructure\AutoTask\AutoTaskApiClient;
 use Illuminate\Support\Facades\Route;
@@ -121,6 +123,16 @@ Route::get('/resources', function () {
     } catch (\Throwable $e) {
         return response()->json(['resources' => [], 'error' => $e->getMessage()], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
     }
+});
+
+Route::get('/patches/sites', [PatchController::class, 'sites']);
+Route::get('/patches', [PatchController::class, 'index']);
+
+Route::prefix('devices')->group(function () {
+    Route::get('/sites-summary', [DeviceController::class, 'sitesSummary']);
+    Route::get('/', [DeviceController::class, 'index']);
+    Route::get('/{deviceUid}/alerts', [DeviceController::class, 'alerts']);
+    Route::get('/{deviceUid}', [DeviceController::class, 'show']);
 });
 
 Route::prefix('ai')->group(function () {

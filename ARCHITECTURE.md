@@ -166,14 +166,37 @@ frontend/
 
 ---
 
-## 8. Referencia rápida del mockup (dashboard.jsx)
+## 8. Dashboard — Centro del proyecto y referencia
+
+**El Dashboard en React es la base e inspiración de todo el proyecto.** Desde el dashboard se ejecuta y orquesta la experiencia: es la referencia visual, de flujo y de datos. Cualquier nueva pantalla o módulo debe sentirse parte del mismo sistema (misma paleta, tipografía y patrones de layout).
+
+### 8.1 Origen de los datos del Dashboard
+
+Todo lo que se muestra (métricas, gráficos, tickets, parches) se rellena **exclusivamente con llamadas a las APIs de AutoTask y Datto RMM**. No hay datos predefinidos; hasta que cada API esté conectada, las secciones correspondientes quedan vacías o en cero.
+
+| Bloque en el Dashboard | Fuente de datos | Estado |
+|------------------------|-----------------|--------|
+| **Tiempo resp. avg** (y delta vs ayer) | AutoTask (métricas / reportes) | Pendiente API |
+| **Resueltos hoy** / **esta semana** | AutoTask (tickets completados por período) | Pendiente API |
+| **Tickets abiertos** | AutoTask (lista con `open_only`) | Conectado |
+| **SLA Breach** | AutoTask (tickets que exceden SLA) | Pendiente API |
+| **Horas trabajadas** (hoy / semana) | AutoTask (time entries o equivalente) | Pendiente API |
+| **Gráfico: Tiempo de respuesta vs SLA** | AutoTask (métricas por hora) | Pendiente API |
+| **Gráfico: Tickets — semana** (resueltos/abiertos) | AutoTask (agregados por día) | Pendiente API |
+| **Resumen mensual** (resueltos, horas facturadas, SLA %) | AutoTask | Pendiente API |
+| **Estado de parches** (Workstations / Servers) | Datto RMM | Pendiente — módulo parches en espera |
+| **Tabla de tickets abiertos** (filas + detalle expandible) | AutoTask | Conectado |
+
+**Nota:** El módulo de parches (Datto RMM) no se avanza por ahora; queda mucho por hacer en métricas y gráficos con AutoTask antes.
+
+### 8.2 Referencia rápida del diseño (dashboard)
 
 - **Marca:** HELPDEX — OPERATIONS CENTER.
 - **Navegación:** Dashboard, Mis Tickets, Parches, Dispositivos, IA Asistente, Reportes.
 - **Métricas superiores:** Tiempo respuesta avg, Resueltos hoy, Tickets abiertos, SLA Breach, Horas trabajadas.
 - **Gráficos:** Tiempo de respuesta vs SLA (30 min); Tickets por semana (resueltos/abiertos).
-- **Parches:** Workstations / Servers — Compliant %, Pendientes %, Críticos; barras apiladas.
-- **Tabla de tickets:** ID, Título/Categoría, Prioridad, Resuelto (hace X), Horas, Tech; fila expandible con resolución y botones “Ver en AutoTask” y “Preguntar a IA”.
+- **Parches:** Workstations / Servers — Compliant %, Pendientes %, Críticos; barras apiladas (datos desde Datto RMM cuando se conecte).
+- **Tabla de tickets:** ID, Título/Estatus, Prioridad, Estado, Actividad, Tech; fila expandible con descripción, cuenta, contacto, sugerencias IA y botones “Ver en AutoTask” y “Preguntar a IA”.
 - **Estilo:** Fondo oscuro (#060b14), cards #0a1628, bordes #1a2744, acentos cyan/azul (#0ea5e9), fuentes Syne + JetBrains Mono.
 
 Cualquier nueva pantalla o flujo debe sentirse parte del mismo sistema (misma paleta, tipografía y patrones de layout).

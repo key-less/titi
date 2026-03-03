@@ -15,7 +15,8 @@ final class OpenAISuggestionsService implements SuggestionsServiceInterface
     public function __construct(
         private string $apiKey,
         private string $model = 'gpt-4o-mini',
-        private string $baseUrl = 'https://api.openai.com/v1'
+        private string $baseUrl = 'https://api.openai.com/v1',
+        private bool $verifySsl = true
     ) {}
 
     public function getSuggestionsForTicket(string $title, ?string $description): array
@@ -71,7 +72,7 @@ PROMPT;
         $response = Http::withHeaders([
             'Authorization' => 'Bearer ' . $this->apiKey,
             'Content-Type' => 'application/json',
-        ])->timeout(30)->post($this->baseUrl . '/chat/completions', [
+        ])->withOptions(['verify' => $this->verifySsl])->timeout(30)->post($this->baseUrl . '/chat/completions', [
             'model' => $this->model,
             'messages' => $messages,
             'max_tokens' => $max_tokens,

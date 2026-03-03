@@ -1,12 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { fetchTickets } from '../api/ticketsApi';
 
-// Datos de ejemplo cuando el backend no está disponible (evita ECONNREFUSED en pantalla)
-const FALLBACK_TICKETS = [
-  { id: 1, ticketNumber: 'T-EJEMPLO-001', title: 'Ejemplo: Backend no conectado', statusLabel: 'In Progress', priorityLabel: 'Medium', estimatedHours: 0 },
-  { id: 2, ticketNumber: 'T-EJEMPLO-002', title: 'Inicia el backend con: php artisan serve', statusLabel: 'Waiting Customer', priorityLabel: 'Low', estimatedHours: 0 },
-];
-
 export function useTickets(options = {}) {
   const [tickets, setTickets] = useState([]);
   const [count, setCount] = useState(0);
@@ -36,8 +30,8 @@ export function useTickets(options = {}) {
     } catch (e) {
       setError(e.message || 'Error al cargar tickets');
       setBackendUnavailable(true);
-      setTickets(FALLBACK_TICKETS);
-      setCount(FALLBACK_TICKETS.length);
+      setTickets([]);
+      setCount(0);
     } finally {
       setLoading(false);
     }

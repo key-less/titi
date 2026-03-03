@@ -1,6 +1,6 @@
 /**
  * Dashboard HELPDEX — Operaciones Center
- * Tickets desde AutoTask (API). Métricas y parches con mock hasta Fase 2.
+ * Datos desde AutoTask y Datto RMM (APIs). Sin datos predefinidos.
  */
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
@@ -19,49 +19,24 @@ import {
 } from "recharts";
 import { useTickets } from "../../tickets/hooks/useTickets";
 import { useTicketWithSuggestions } from "../../tickets/hooks/useTicketWithSuggestions";
+import { usePatches } from "../../patches/hooks/usePatches";
 import { fetchResources, fetchTicketStatus } from "../../tickets/api/ticketsApi";
 
-// ─── MOCK DATA (will be replaced by AutoTask + Datto RMM API calls) ─────────
-const MOCK_METRICS = {
-  avgResponseTime: "14m 32s",
-  avgResponseDelta: -8.4,
-  resolvedToday: 12,
-  resolvedWeek: 58,
-  resolvedMonth: 234,
-  openTickets: 27,
-  slaBreached: 2,
-  slaDelta: +1,
-  hoursToday: 6.5,
-  hoursWeek: 31.2,
+// Métricas, gráficos y parches se rellenan desde AutoTask y Datto RMM. Vacíos hasta conectar APIs.
+const EMPTY_METRICS = {
+  avgResponseTime: "—",
+  avgResponseDelta: 0,
+  resolvedToday: 0,
+  resolvedWeek: 0,
+  resolvedMonth: 0,
+  openTickets: 0,
+  slaBreached: 0,
+  slaDelta: 0,
+  hoursToday: 0,
+  hoursWeek: 0,
 };
-
-const RESPONSE_TIME_DATA = [
-  { time: "08:00", minutes: 22, sla: 30 },
-  { time: "09:00", minutes: 18, sla: 30 },
-  { time: "10:00", minutes: 9, sla: 30 },
-  { time: "11:00", minutes: 14, sla: 30 },
-  { time: "12:00", minutes: 28, sla: 30 },
-  { time: "13:00", minutes: 11, sla: 30 },
-  { time: "14:00", minutes: 7, sla: 30 },
-  { time: "15:00", minutes: 19, sla: 30 },
-  { time: "16:00", minutes: 13, sla: 30 },
-  { time: "NOW", minutes: 6, sla: 30 },
-];
-
-const WEEKLY_DATA = [
-  { day: "Lun", resolved: 9, open: 14 },
-  { day: "Mar", resolved: 14, open: 11 },
-  { day: "Mié", resolved: 7, open: 18 },
-  { day: "Jue", resolved: 16, open: 8 },
-  { day: "Vie", resolved: 12, open: 6 },
-  { day: "Sáb", resolved: 3, open: 3 },
-  { day: "HOY", resolved: 12, open: 27 },
-];
-
-const PATCH_DATA = [
-  { name: "Workstations", compliant: 87, pending: 13, critical: 4 },
-  { name: "Servers", compliant: 94, pending: 6, critical: 1 },
-];
+const EMPTY_RESPONSE_TIME_DATA = [];
+const EMPTY_WEEKLY_DATA = [];
 
 // Helper: formatea fecha para "Resuelto" / "Última actividad"
 function formatRelative(dateStr) {
@@ -79,10 +54,10 @@ function formatRelative(dateStr) {
 }
 
 const priorityConfig = {
-  Critical: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "CRÍTICO" },
-  High: { color: "#f97316", bg: "rgba(249,115,22,0.12)", label: "ALTO" },
-  Medium: { color: "#eab308", bg: "rgba(234,179,8,0.12)", label: "MEDIO" },
-  Low: { color: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "BAJO" },
+  Normal: { color: "#0ea5e9", bg: "rgba(14,165,233,0.12)", label: "Normal" },
+  Media: { color: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "Media" },
+  Alta: { color: "#eab308", bg: "rgba(234,179,8,0.12)", label: "Alta" },
+  Critica: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "Crítica" },
 };
 
 const categoryColor = {
@@ -201,6 +176,7 @@ export function Dashboard() {
     return () => { cancelled = true; };
   }, []);
   const { data: ticketDetail, loading: detailLoading, error: detailError, loadTicket: loadTicketDetail, clear: clearDetail } = useTicketWithSuggestions();
+  const { patches: patchData } = usePatches();
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -235,6 +211,8 @@ export function Dashboard() {
         .grid-bg { background-image: linear-gradient(rgba(14,77,145,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(14,77,145,0.05) 1px, transparent 1px); background-size: 32px 32px; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); } 70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
+        @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
       `}</style>
 
       <div style={{ display: "flex", minHeight: "100vh" }}>
@@ -280,9 +258,9 @@ export function Dashboard() {
           {[
             { icon: "▣", label: "Dashboard", path: "/" },
             { icon: "◈", label: "Mis Tickets", path: "/mis-tickets" },
-            { icon: "◉", label: "Parches", path: null },
-            { icon: "◎", label: "Dispositivos", path: null },
-            { icon: "⬡", label: "IA Asistente", path: null },
+            { icon: "◉", label: "Parches", path: "/parches" },
+            { icon: "◎", label: "Dispositivos", path: "/dispositivos" },
+            { icon: "⬡", label: "IA Asistente", path: "/ia-asistente" },
             { icon: "◇", label: "Reportes", path: null },
           ].map((item) => {
             const isActive = item.path ? location.pathname === item.path || (item.path === "/" && (location.pathname === "/" || location.pathname === "/dashboard")) : false;
@@ -403,10 +381,10 @@ export function Dashboard() {
           >
             <div className="helpdex-card" style={{ padding: "20px 22px" }}>
               <div className="helpdex-label" style={{ marginBottom: 10 }}>Tiempo Resp. Avg</div>
-              <div className="metric-value" style={{ color: "#22d3ee" }}>{MOCK_METRICS.avgResponseTime}</div>
+              <div className="metric-value" style={{ color: "#22d3ee" }}>{EMPTY_METRICS.avgResponseTime}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
-                <span style={{ fontSize: 11, color: "#22c55e", fontFamily: "monospace", fontWeight: 700 }}>
-                  ▼ {Math.abs(MOCK_METRICS.avgResponseDelta)}%
+                <span style={{ fontSize: 11, color: "#334155", fontFamily: "monospace" }}>
+                  {EMPTY_METRICS.avgResponseDelta !== 0 ? `▼ ${Math.abs(EMPTY_METRICS.avgResponseDelta)}%` : "—"}
                 </span>
                 <span style={{ fontSize: 10, color: "#334155" }}>vs ayer</span>
               </div>
@@ -414,16 +392,16 @@ export function Dashboard() {
             <div className="helpdex-card" style={{ padding: "20px 22px" }}>
               <div className="helpdex-label" style={{ marginBottom: 10 }}>Resueltos Hoy</div>
               <div className="metric-value" style={{ color: "#22c55e" }}>
-                <Ticker value={MOCK_METRICS.resolvedToday} />
+                <Ticker value={EMPTY_METRICS.resolvedToday} />
               </div>
               <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                /{MOCK_METRICS.resolvedWeek} esta semana
+                /{EMPTY_METRICS.resolvedWeek} esta semana
               </div>
             </div>
             <div className="helpdex-card" style={{ padding: "20px 22px" }}>
               <div className="helpdex-label" style={{ marginBottom: 10 }}>Tickets Abiertos</div>
               <div className="metric-value" style={{ color: "#f97316" }}>
-                <Ticker value={MOCK_METRICS.openTickets} />
+                <Ticker value={EMPTY_METRICS.openTickets} />
               </div>
               <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
                 AutoTask · en vivo
@@ -433,28 +411,28 @@ export function Dashboard() {
               className="helpdex-card"
               style={{
                 padding: "20px 22px",
-                borderColor: MOCK_METRICS.slaBreached > 0 ? "#3b1a1a" : "#1a2744",
+                borderColor: EMPTY_METRICS.slaBreached > 0 ? "#3b1a1a" : "#1a2744",
               }}
             >
               <div className="helpdex-label" style={{ marginBottom: 10 }}>SLA Breach</div>
               <div
                 className="metric-value"
-                style={{ color: MOCK_METRICS.slaBreached > 0 ? "#ef4444" : "#22c55e" }}
+                style={{ color: EMPTY_METRICS.slaBreached > 0 ? "#ef4444" : "#22c55e" }}
               >
-                <Ticker value={MOCK_METRICS.slaBreached} />
+                <Ticker value={EMPTY_METRICS.slaBreached} />
               </div>
               <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                {MOCK_METRICS.slaBreached > 0 ? "⚠ Requiere atención" : "✓ Dentro del SLA"}
+                {EMPTY_METRICS.slaBreached > 0 ? "⚠ Requiere atención" : "✓ Dentro del SLA"}
               </div>
             </div>
             <div className="helpdex-card" style={{ padding: "20px 22px" }}>
               <div className="helpdex-label" style={{ marginBottom: 10 }}>Horas Trabajadas</div>
               <div className="metric-value" style={{ color: "#818cf8" }}>
-                {MOCK_METRICS.hoursToday}
+                {EMPTY_METRICS.hoursToday}
                 <span style={{ fontSize: 16, fontWeight: 400, color: "#475569" }}>h</span>
               </div>
               <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                {MOCK_METRICS.hoursWeek}h esta semana
+                {EMPTY_METRICS.hoursWeek}h esta semana
               </div>
             </div>
           </div>
@@ -485,7 +463,7 @@ export function Dashboard() {
                 <LiveDot />
               </div>
               <ResponsiveContainer width="100%" height={180}>
-                <AreaChart data={RESPONSE_TIME_DATA}>
+                <AreaChart data={EMPTY_RESPONSE_TIME_DATA}>
                   <defs>
                     <linearGradient id="gradCyan" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#22d3ee" stopOpacity={0.25} />
@@ -529,7 +507,7 @@ export function Dashboard() {
             <div className="helpdex-card" style={{ padding: "22px 24px" }}>
               <div className="section-title">TICKETS — SEMANA ACTUAL</div>
               <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={WEEKLY_DATA} barGap={4}>
+                <BarChart data={EMPTY_WEEKLY_DATA} barGap={4}>
                   <CartesianGrid stroke="#0f1e35" strokeDasharray="4 4" vertical={false} />
                   <XAxis
                     dataKey="day"
@@ -585,9 +563,9 @@ export function Dashboard() {
               <div className="section-title">RESUMEN MENSUAL</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 {[
-                  { label: "Tickets resueltos", value: MOCK_METRICS.resolvedMonth, color: "#22c55e", suffix: "" },
-                  { label: "Horas facturadas", value: 142, color: "#818cf8", suffix: "h" },
-                  { label: "SLA cumplido", value: 97, color: "#22d3ee", suffix: "%" },
+                  { label: "Tickets resueltos", value: EMPTY_METRICS.resolvedMonth, color: "#22c55e", suffix: "" },
+                  { label: "Horas facturadas", value: 0, color: "#818cf8", suffix: "h" },
+                  { label: "SLA cumplido", value: 0, color: "#22d3ee", suffix: "%" },
                 ].map((m) => (
                   <div key={m.label}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -628,7 +606,11 @@ export function Dashboard() {
             <div className="helpdex-card" style={{ padding: "22px 24px" }}>
               <div className="section-title">ESTADO DE PARCHES — DATTO RMM</div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-                {PATCH_DATA.map((p) => (
+                {patchData.length === 0 ? (
+                  <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "24px 16px", fontFamily: "monospace", fontSize: 11, color: "#475569" }}>
+                    Sin datos — conectar API Datto RMM
+                  </div>
+                ) : patchData.map((p) => (
                   <div key={p.name}>
                     <div
                       style={{
@@ -697,7 +679,7 @@ export function Dashboard() {
                       <div style={{ width: `${p.compliant}%`, background: "#22c55e", opacity: 0.8 }} />
                       <div
                         style={{
-                          width: `${p.pending - p.critical}%`,
+                          width: `${Math.max(0, (p.pending ?? 0) - (p.critical ?? 0))}%`,
                           background: "#f97316",
                           opacity: 0.7,
                         }}
@@ -735,6 +717,22 @@ export function Dashboard() {
                 {soloAbiertos ? 'TICKETS ABIERTOS' : 'MIS TICKETS (HISTORIAL)'} — AUTOTASK
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <Link
+                  to="/mis-tickets"
+                  style={{
+                    background: "transparent",
+                    border: "1px solid #1a2744",
+                    color: "#475569",
+                    padding: "5px 12px",
+                    borderRadius: 5,
+                    fontFamily: "monospace",
+                    fontSize: 10,
+                    letterSpacing: 1,
+                    textDecoration: "none",
+                  }}
+                >
+                  VER TODOS →
+                </Link>
                 <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 10, color: "#475569", letterSpacing: 1 }}>
                   Asignado a:
                   <select
@@ -869,10 +867,10 @@ export function Dashboard() {
                           {priorityLbl}
                         </span>
                       </div>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }}>
+                      <div style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }} title="Última actividad">
                         {formatRelative(t.completedDate || t.lastActivityDate)}
                       </div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: "#818cf8" }}>
+                      <div style={{ fontFamily: "monospace", fontSize: 11, color: "#94a3b8" }}>
                         {t.estimatedHours != null ? `${Number(t.estimatedHours)}h` : "—"}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

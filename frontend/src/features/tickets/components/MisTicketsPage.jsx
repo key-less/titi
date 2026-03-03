@@ -29,10 +29,10 @@ function formatRelative(dateStr) {
 }
 
 const priorityConfig = {
-  Critical: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "CRÍTICO" },
-  High: { color: "#f97316", bg: "rgba(249,115,22,0.12)", label: "ALTO" },
-  Medium: { color: "#eab308", bg: "rgba(234,179,8,0.12)", label: "MEDIO" },
-  Low: { color: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "BAJO" },
+  Normal: { color: "#0ea5e9", bg: "rgba(14,165,233,0.12)", label: "Normal" },
+  Media: { color: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "Media" },
+  Alta: { color: "#eab308", bg: "rgba(234,179,8,0.12)", label: "Alta" },
+  Critica: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "Crítica" },
 };
 
 const statusColor = {
@@ -126,9 +126,9 @@ export function MisTicketsPage() {
           {[
             { icon: "▣", label: "Dashboard", path: "/" },
             { icon: "◈", label: "Mis Tickets", path: "/mis-tickets" },
-            { icon: "◉", label: "Parches", path: null },
-            { icon: "◎", label: "Dispositivos", path: null },
-            { icon: "⬡", label: "IA Asistente", path: null },
+            { icon: "◉", label: "Parches", path: "/parches" },
+            { icon: "◎", label: "Dispositivos", path: "/dispositivos" },
+            { icon: "⬡", label: "IA Asistente", path: "/ia-asistente" },
             { icon: "◇", label: "Reportes", path: null },
           ].map((item) => {
             const isActive = item.path ? (location.pathname === item.path || (item.path === "/" && (location.pathname === "/" || location.pathname === "/dashboard"))) : false;
