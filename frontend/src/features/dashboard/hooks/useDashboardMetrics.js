@@ -17,7 +17,7 @@ const defaultPatches = {
 };
 
 export function useDashboardMetrics(options = {}) {
-  const { siteUid = null, refetchIntervalMs = 60 * 1000 } = options;
+  const { siteUid = null, refetchIntervalMs = 60 * 1000 } = options; // 1 min por defecto para datos en vivo
   const [tickets, setTickets] = useState({ ...defaultTickets, responseTimeChart: [] });
   const [patches, setPatches] = useState(defaultPatches);
   const [slaBreached, setSlaBreached] = useState(0);

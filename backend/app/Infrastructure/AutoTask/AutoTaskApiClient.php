@@ -136,6 +136,48 @@ final class AutoTaskApiClient
     }
 
     /**
+     * Ejecuta varias peticiones GET en paralelo para reducir latencia.
+     * Cada elemento de $requests debe ser ['entity' => string, 'id' => int|string].
+     * Devuelve un mapa clave "entity:id" => array|null (null si falló o no existe).
+     *
+     * @param list<array{entity: string, id: int|string}> $requests
+     * @return array<string, array|null>
+     */
+    public function getMultiple(array $requests): array
+    {
+        if ($requests === []) {
+            return [];
+        }
+
+        $headers = [
+            'Username' => $this->username,
+            'Secret' => $this->secret,
+            'APIIntegrationcode' => $this->integrationCode,
+            'Content-Type' => 'application/json',
+        ];
+
+        $verifySsl = config('autotask.verify_ssl', true);
+        $responses = Http::withHeaders($headers)
+            ->timeout(30)
+            ->withOptions(['verify' => $verifySsl])
+            ->pool(fn (\Illuminate\Http\Client\Pool $pool) => array_map(
+                function (array $req) use ($pool) {
+                    $url = $this->baseUrl . '/' . $req['entity'] . '/' . $req['id'];
+                    return $pool->as($req['entity'] . ':' . $req['id'])->get($url);
+                },
+                $requests
+            ));
+
+        $result = [];
+        foreach ($requests as $req) {
+            $key = $req['entity'] . ':' . $req['id'];
+            $response = $responses[$key] ?? null;
+            $result[$key] = ($response && $response->successful()) ? $response->json() : null;
+        }
+        return $result;
+    }
+
+    /**
      * Notas de un ticket (respuestas, actividad). Query TicketNotes por ticketID.
      * @return array<int, array>
      */

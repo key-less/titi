@@ -12,13 +12,12 @@ use Illuminate\Support\Facades\Cache;
 
 final class AutoTaskTicketRepository implements TicketRepositoryInterface
 {
-    private const CACHE_KEY_PREFIX = 'helpdex_autotask_';
-    private const TICKETS_CACHE_KEY = self::CACHE_KEY_PREFIX . 'tickets_list';
-
     public function __construct(
         private AutoTaskApiClient $client,
-        private int $cacheTtl = 60
-    ) {}
+        private ?int $cacheTtl = null
+    ) {
+        $this->cacheTtl = $cacheTtl ?? config('helpdex_cache.ttl.autotask', 60);
+    }
 
     public function listTickets(array $filters = []): array
     {
@@ -84,7 +83,8 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
         $skipCache = !empty($filters['skipCache']);
         $filtersForKey = $filters;
         unset($filtersForKey['skipCache']);
-        $cacheKey = self::TICKETS_CACHE_KEY . '_' . md5(json_encode($filtersForKey))
+        $baseKey = config('helpdex_cache.keys.autotask_tickets', 'helpdex_autotask_tickets_list');
+        $cacheKey = $baseKey . '_' . md5(json_encode($filtersForKey))
             . '_q_' . md5(json_encode($queueIds))
             . ($openOnly ? '_o_' . md5(json_encode(config('autotask.open_status_ids', [1, 6, 9, 10]))) : '');
         if (!$skipCache && $this->cacheTtl > 0) {
@@ -125,61 +125,63 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
             return null;
         }
 
-        $account = null;
+        // Una sola ronda de llamadas en paralelo para Company, Contact y Resources (IDs únicos para no duplicar peticiones)
+        $batchKeys = [];
         if ($ticket->companyId) {
-            try {
-                $company = $this->client->get('Companies', (string) $ticket->companyId);
-                if ($company && !empty($company)) {
-                    $account = $this->mapToAccount($company);
-                }
-            } catch (\Throwable $e) {
-                // Dejar account null; el ticket se devuelve igual
-            }
+            $batchKeys['Companies:' . $ticket->companyId] = ['entity' => 'Companies', 'id' => (string) $ticket->companyId];
         }
-
-        $contact = null;
         if ($ticket->contactId) {
-            try {
-                $contactData = $this->client->get('Contacts', (string) $ticket->contactId);
-                if ($contactData && !empty($contactData)) {
-                    $contact = $this->mapToContact($contactData);
-                }
-            } catch (\Throwable $e) {
-                // Dejar contact null
+            $batchKeys['Contacts:' . $ticket->contactId] = ['entity' => 'Contacts', 'id' => (string) $ticket->contactId];
+        }
+        foreach (['assignedResourceId', 'creatorResourceId', 'completedByResourceId'] as $prop) {
+            $rid = $ticket->$prop;
+            if ($rid) {
+                $batchKeys['Resources:' . $rid] = ['entity' => 'Resources', 'id' => (string) $rid];
             }
         }
+        $batch = array_values($batchKeys);
 
+        $account = null;
+        $contact = null;
         $assignedResource = null;
         $creatorResource = null;
         $completedByResource = null;
-        if ($ticket->assignedResourceId) {
+
+        if ($batch !== []) {
             try {
-                $res = $this->client->get('Resources', (string) $ticket->assignedResourceId);
-                if ($res && !empty($res)) {
-                    $assignedResource = $this->mapToResource($res);
+                $results = $this->client->getMultiple($batch);
+                if ($ticket->companyId) {
+                    $company = $results['Companies:' . $ticket->companyId] ?? null;
+                    if ($company && !empty($company)) {
+                        $account = $this->mapToAccount($company);
+                    }
+                }
+                if ($ticket->contactId) {
+                    $contactData = $results['Contacts:' . $ticket->contactId] ?? null;
+                    if ($contactData && !empty($contactData)) {
+                        $contact = $this->mapToContact($contactData);
+                    }
+                }
+                if ($ticket->assignedResourceId) {
+                    $res = $results['Resources:' . $ticket->assignedResourceId] ?? null;
+                    if ($res && !empty($res)) {
+                        $assignedResource = $this->mapToResource($res);
+                    }
+                }
+                if ($ticket->creatorResourceId) {
+                    $res = $results['Resources:' . $ticket->creatorResourceId] ?? null;
+                    if ($res && !empty($res)) {
+                        $creatorResource = $this->mapToResource($res);
+                    }
+                }
+                if ($ticket->completedByResourceId) {
+                    $res = $results['Resources:' . $ticket->completedByResourceId] ?? null;
+                    if ($res && !empty($res)) {
+                        $completedByResource = $this->mapToResource($res);
+                    }
                 }
             } catch (\Throwable $e) {
-                // Dejar null
-            }
-        }
-        if ($ticket->creatorResourceId) {
-            try {
-                $res = $this->client->get('Resources', (string) $ticket->creatorResourceId);
-                if ($res && !empty($res)) {
-                    $creatorResource = $this->mapToResource($res);
-                }
-            } catch (\Throwable $e) {
-                // Dejar null
-            }
-        }
-        if ($ticket->completedByResourceId) {
-            try {
-                $res = $this->client->get('Resources', (string) $ticket->completedByResourceId);
-                if ($res && !empty($res)) {
-                    $completedByResource = $this->mapToResource($res);
-                }
-            } catch (\Throwable $e) {
-                // Dejar null
+                // Dejar todos null; el ticket se devuelve igual
             }
         }
 
@@ -262,6 +264,33 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
         return $this->client->get('Resources', $resourceId);
     }
 
+    /**
+     * Varios Resources por ID en una sola llamada (query con filter IN).
+     * @param list<int> $ids
+     * @return array<int, array> id => item crudo
+     */
+    public function getResourcesByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter($ids)));
+        if ($ids === []) {
+            return [];
+        }
+        try {
+            $filter = [['op' => 'in', 'field' => 'id', 'value' => array_map('strval', $ids)]];
+            $items = $this->client->query('Resources', $filter, count($ids) + 50);
+            $map = [];
+            foreach ($items as $item) {
+                $id = (int) ($item['id'] ?? $item['ID'] ?? 0);
+                if ($id > 0) {
+                    $map[$id] = $item;
+                }
+            }
+            return $map;
+        } catch (\Throwable $e) {
+            return [];
+        }
+    }
+
     private function intFrom(array $item, array $keys): ?int
     {
         foreach ($keys as $key) {
@@ -326,6 +355,7 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
             lastName: (string) ($item['lastName'] ?? $item['LastName'] ?? ''),
             email: $item['email'] ?? $item['EmailAddress'] ?? $item['Email'] ?? null,
             phone: $item['phone'] ?? $item['Phone'] ?? null,
+            extension: $item['extension'] ?? $item['Extension'] ?? $item['officeExtension'] ?? null,
             title: $item['title'] ?? $item['Title'] ?? null,
         );
     }
@@ -333,12 +363,15 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
     private function mapToResource(array $item): Resource
     {
         $id = (int) ($item['id'] ?? $item['ID'] ?? 0);
+        $phone = $item['officePhone'] ?? $item['OfficePhone'] ?? $item['mobilePhone'] ?? $item['MobilePhone'] ?? $item['phone'] ?? $item['Phone'] ?? null;
         return new Resource(
             id: $id,
             firstName: (string) ($item['firstName'] ?? $item['FirstName'] ?? ''),
             lastName: (string) ($item['lastName'] ?? $item['LastName'] ?? ''),
             email: $item['email'] ?? $item['Email'] ?? null,
             userName: $item['userName'] ?? $item['UserName'] ?? null,
+            phone: $phone,
+            extension: $item['officeExtension'] ?? $item['OfficeExtension'] ?? $item['extension'] ?? $item['Extension'] ?? null,
         );
     }
 }

@@ -77,11 +77,10 @@ return [
 
     /*
     | IDs de estado para "tickets abiertos" en la query a la API (Dashboard / open_only=1).
-    | La API solo devuelve tickets con status IN estos IDs (filter en la request, no filtro en PHP).
-    | Por defecto: New (1), In Progress (6), Waiting Customer (9), Waiting Vendor (10).
+    | In Progress (6), New (1), Waiting Customer (9), Waiting Vendor (10), On Hold (11).
     | Ref: https://www.autotask.net/help/developerhelp/Content/APIs/REST/API_Calls/REST_Advanced_Query_Features.htm
     */
-    'open_status_ids' => [1, 6, 9, 10],
+    'open_status_ids' => [1, 6, 9, 10, 11],
 
     /*
     | Filtrar tickets por colas (Level I Support, Level II, etc.). Si está vacío, se muestran todos.

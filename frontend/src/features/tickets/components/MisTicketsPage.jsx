@@ -342,9 +342,13 @@ export function MisTicketsPage() {
                                 <p style={{ fontFamily: "monospace", fontSize: 12, color: "#cbd5e1", lineHeight: 1.7, maxWidth: 720, whiteSpace: "pre-wrap", margin: 0 }}>{ticketDetail.ticket.description}</p>
                               </div>
                             )}
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 14 }}>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 14 }}>
                               <div style={{ fontFamily: "monospace", fontSize: 11 }}>
-                                <span style={{ color: "#64748b" }}>Cuenta: </span>
+                                <span style={{ color: "#64748b" }}>Estatus: </span>
+                                <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{ticketDetail.ticket.statusLabel ?? ticketDetail.ticket.status ?? "—"}</span>
+                              </div>
+                              <div style={{ fontFamily: "monospace", fontSize: 11 }}>
+                                <span style={{ color: "#64748b" }}>Cuenta (Company): </span>
                                 <strong style={{ color: "#cbd5e1" }}>{ticketDetail.ticket.account?.companyName ?? "—"}</strong>
                                 {ticketDetail.ticket.account?.phone && <span style={{ color: "#475569", marginLeft: 8 }}> · {ticketDetail.ticket.account.phone}</span>}
                               </div>
@@ -352,13 +356,25 @@ export function MisTicketsPage() {
                                 <span style={{ color: "#64748b" }}>Contacto: </span>
                                 <strong style={{ color: "#cbd5e1" }}>{ticketDetail.ticket.contact?.fullName ?? "—"}</strong>
                                 {ticketDetail.ticket.contact?.email && <span style={{ color: "#475569", marginLeft: 8 }}> · {ticketDetail.ticket.contact.email}</span>}
-                                {ticketDetail.ticket.contact?.phone && <span style={{ color: "#475569" }}> · {ticketDetail.ticket.contact.phone}</span>}
+                                {ticketDetail.ticket.contact?.phone && <span style={{ color: "#475569" }}> · Tel: {ticketDetail.ticket.contact.phone}</span>}
+                                {ticketDetail.ticket.contact?.extension && <span style={{ color: "#475569" }}> · Ext: {ticketDetail.ticket.contact.extension}</span>}
                                 {!ticketDetail.ticket.contact?.fullName && !ticketDetail.ticket.contact?.email && !ticketDetail.ticket.contact?.phone && <span style={{ color: "#475569" }}>—</span>}
                               </div>
                               <div style={{ fontFamily: "monospace", fontSize: 11 }}>
                                 <span style={{ color: "#64748b" }}>Técnico asignado: </span>
                                 <span style={{ color: "#cbd5e1" }}>{ticketDetail.ticket.assignedResource?.fullName || ticketDetail.ticket.creatorResource?.fullName || ticketDetail.ticket.completedByResource?.fullName || "—"}</span>
+                                {(ticketDetail.ticket.assignedResource?.phone || ticketDetail.ticket.assignedResource?.extension) && (
+                                  <span style={{ color: "#475569", marginLeft: 8 }}>
+                                    {ticketDetail.ticket.assignedResource?.phone && `Tel: ${ticketDetail.ticket.assignedResource.phone}`}
+                                    {ticketDetail.ticket.assignedResource?.extension && ` · Ext: ${ticketDetail.ticket.assignedResource.extension}`}
+                                  </span>
+                                )}
                               </div>
+                              {(!ticketDetail.ticket.account?.companyName && !ticketDetail.ticket.contact?.fullName && !ticketDetail.ticket.assignedResource?.fullName && !ticketDetail.ticket.creatorResource?.fullName) && (
+                                <div style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", fontStyle: "italic" }}>
+                                  Si no aparecen datos, el ticket en AutoTask puede no tener cuenta, contacto o técnico asignado.
+                                </div>
+                              )}
                             </div>
                             {ticketDetail.ticket.resolution && (
                               <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
@@ -392,9 +408,22 @@ export function MisTicketsPage() {
                                 </div>
                               </div>
                             )}
-                            <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
-                              <a href={`${autotaskTicketDetailUrl || "https://ww3.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx?Code=OpenTicketDetail&TicketID="}${ticketDetail.ticket.id}`} target="_blank" rel="noopener noreferrer" style={{ background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.2)", color: "#38bdf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>Ver en AutoTask →</a>
-                              <Link to="/ia-asistente" style={{ background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.2)", color: "#818cf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>Preguntar a IA →</Link>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                                <a
+                                  href={`${ticketDetail.autotaskTicketDetailUrl ?? autotaskTicketDetailUrl ?? "https://ww3.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx?Code=OpenTicketDetail&TicketID="}${ticketDetail.ticket.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Abre en AutoTask. Debes estar logueado en AutoTask en este navegador. Si ves un error, verifica AUTOTASK_WEB_URL en .env (ej. https://ww14.autotask.net)."
+                                  style={{ background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.2)", color: "#38bdf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}
+                                >
+                                  Ver en AutoTask →
+                                </a>
+                                <Link to="/ia-asistente" style={{ background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.2)", color: "#818cf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>Preguntar a IA →</Link>
+                              </div>
+                              <div style={{ fontFamily: "monospace", fontSize: 9, color: "#64748b" }}>
+                                Debes estar logueado en AutoTask en este navegador. Si ves error, verifica AUTOTASK_WEB_URL en .env (ej. https://ww14.autotask.net).
+                              </div>
                             </div>
                           </>
                         ) : null}

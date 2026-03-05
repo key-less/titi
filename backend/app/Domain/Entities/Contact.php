@@ -10,6 +10,7 @@ final class Contact
         public string $lastName,
         public ?string $email = null,
         public ?string $phone = null,
+        public ?string $extension = null,
         public ?string $title = null,
     ) {}
 

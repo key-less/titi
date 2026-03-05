@@ -14,9 +14,20 @@ use Illuminate\Support\Facades\Cache;
  */
 class PatchController
 {
-    private const CACHE_KEY_SITES = 'datto_rmm_sites';
-    private const CACHE_KEY_DEVICES = 'datto_rmm_devices_';
-    private const CACHE_TTL = 300; // 5 minutos
+    private static function cacheKeySites(): string
+    {
+        return config('helpdex_cache.keys.datto_sites', 'helpdex_datto_rmm_sites');
+    }
+
+    private static function cacheKeyDevices(string $siteUid = ''): string
+    {
+        return config('helpdex_cache.keys.datto_devices', 'helpdex_datto_rmm_devices') . ($siteUid ?: '_all');
+    }
+
+    private static function cacheTtl(): int
+    {
+        return (int) config('helpdex_cache.ttl.datto', 300);
+    }
 
     /** Labels para cada patchStatus de la API */
     private const STATUS_LABELS = [
@@ -36,11 +47,13 @@ class PatchController
         if (!$this->configured()) {
             return response()->json([
                 'sites' => [],
-                'message' => 'Configurar DATTO_RMM_API_URL, DATTO_RMM_API_KEY y DATTO_RMM_API_SECRET en .env.',
+                'message' => 'Datto RMM no configurado.',
+                'hint' => 'Configura DATTO_RMM_API_URL, DATTO_RMM_API_KEY y DATTO_RMM_API_SECRET en .env.',
+                'source' => 'datto',
             ], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
         }
 
-        $sites = Cache::remember(self::CACHE_KEY_SITES, self::CACHE_TTL, function () use ($client) {
+        $sites = Cache::remember(self::cacheKeySites(), self::cacheTtl(), function () use ($client) {
             $list = $client->getSites();
             return array_map(function ($s) {
                 return [
@@ -63,7 +76,7 @@ class PatchController
     public function index(Request $request, DattoRmmApiClient $client): JsonResponse
     {
         $siteUid = $request->query('site_uid');
-        $cacheKey = self::CACHE_KEY_DEVICES . ($siteUid ?: 'all');
+        $cacheKey = self::cacheKeyDevices($siteUid ?: '');
 
         if (!$this->configured()) {
             return response()->json([
@@ -71,11 +84,13 @@ class PatchController
                 'summary' => $this->emptySummary(),
                 'lastUpdated' => null,
                 'configured' => false,
-                'message' => 'Configurar DATTO_RMM_API_URL, DATTO_RMM_API_KEY y DATTO_RMM_API_SECRET en .env.',
+                'message' => 'Datto RMM no configurado.',
+                'hint' => 'Configura DATTO_RMM_API_URL, DATTO_RMM_API_KEY y DATTO_RMM_API_SECRET en .env.',
+                'source' => 'datto',
             ], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
         }
 
-        $result = Cache::remember($cacheKey, self::CACHE_TTL, function () use ($client, $siteUid) {
+        $result = Cache::remember($cacheKey, self::cacheTtl(), function () use ($client, $siteUid) {
             $sites = $client->getSites();
             $siteNames = [];
             foreach ($sites as $s) {

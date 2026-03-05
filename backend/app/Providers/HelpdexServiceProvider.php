@@ -26,7 +26,7 @@ class HelpdexServiceProvider extends ServiceProvider
         $this->app->bind(TicketRepositoryInterface::class, function () {
             return new AutoTaskTicketRepository(
                 $this->app->make(AutoTaskApiClient::class),
-                config('autotask.cache_ttl', 60)
+                null
             );
         });
 

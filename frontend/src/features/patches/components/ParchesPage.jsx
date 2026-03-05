@@ -9,12 +9,12 @@ import { ModuleErrorBanner } from "../../../shared/components/ModuleErrorBanner"
 
 const STATUS_ORDER = ['InstallError', 'NoPolicy', 'NoData', 'RebootRequired', 'ApprovedPending', 'FullyPatched'];
 const STATUS_COLORS = {
-  InstallError: { bg: 'rgba(239,68,68,0.12)', color: '#ef4444' },
-  NoPolicy: { bg: 'rgba(249,115,22,0.12)', color: '#f97316' },
-  NoData: { bg: 'rgba(148,163,184,0.12)', color: '#94a3b8' },
-  RebootRequired: { bg: 'rgba(234,179,8,0.12)', color: '#eab308' },
-  ApprovedPending: { bg: 'rgba(59,130,246,0.12)', color: '#3b82f6' },
-  FullyPatched: { bg: 'rgba(34,197,94,0.12)', color: '#22c55e' },
+  InstallError: { bg: 'rgba(239,68,68,0.28)', color: '#fca5a5', border: '#ef4444' },
+  NoPolicy: { bg: 'rgba(249,115,22,0.28)', color: '#fdba74', border: '#f97316' },
+  NoData: { bg: 'rgba(100,116,139,0.35)', color: '#e2e8f0', border: '#94a3b8' },
+  RebootRequired: { bg: 'rgba(234,179,8,0.28)', color: '#fde047', border: '#eab308' },
+  ApprovedPending: { bg: 'rgba(59,130,246,0.28)', color: '#93c5fd', border: '#3b82f6' },
+  FullyPatched: { bg: 'rgba(34,197,94,0.28)', color: '#86efac', border: '#22c55e' },
 };
 
 function formatDate(iso) {
@@ -57,6 +57,8 @@ export function ParchesPage() {
         .nav-item.active { background: #0e2a4d; color: #38bdf8; border-left: 2px solid #0ea5e9; }
         .grid-bg { background-image: linear-gradient(rgba(14,77,145,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(14,77,145,0.05) 1px, transparent 1px); background-size: 32px 32px; }
         .patch-badge { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 1px; padding: 2px 8px; border-radius: 3px; }
+        .patch-cat-btn { transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
+        .patch-cat-btn:hover { transform: scale(1.03); box-shadow: 0 4px 12px rgba(0,0,0,0.25); }
         @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
 
@@ -133,26 +135,27 @@ export function ParchesPage() {
               {STATUS_ORDER.map((key) => {
                 const count = summary[key] ?? 0;
                 const label = summaryLabels[key] ?? key;
-                const style = STATUS_COLORS[key] ?? { bg: 'rgba(148,163,184,0.12)', color: '#94a3b8' };
+                const style = STATUS_COLORS[key] ?? { bg: 'rgba(148,163,184,0.28)', color: '#e2e8f0', border: '#94a3b8' };
                 const isSelected = selectedCategory === key;
                 return (
                   <button
                     key={key}
                     type="button"
+                    className="patch-cat-btn"
                     onClick={() => setSelectedCategory(isSelected ? '' : key)}
                     style={{
-                      background: isSelected ? style.color : style.bg,
-                      color: isSelected ? '#fff' : style.color,
-                      border: isSelected ? `2px solid ${style.color}` : '2px solid transparent',
+                      background: isSelected ? (style.border || style.color) : style.bg,
+                      color: isSelected ? '#0f172a' : style.color,
+                      border: `2px solid ${isSelected ? (style.border || style.color) : style.border || 'transparent'}`,
                       borderRadius: 8,
                       padding: "12px 14px",
                       textAlign: "center",
                       cursor: "pointer",
-                      fontFamily: "inherit",
+                      fontFamily: "monospace",
                     }}
                   >
-                    <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 700 }}>{count}</div>
-                    <div className="helpdex-label" style={{ marginTop: 4, opacity: isSelected ? 0.9 : 1 }}>{label}</div>
+                    <div style={{ fontFamily: "monospace", fontSize: 20, fontWeight: 700, color: 'inherit' }}>{count}</div>
+                    <div style={{ marginTop: 4, fontSize: 10, fontWeight: 700, letterSpacing: 1, color: 'inherit', textShadow: isSelected ? 'none' : '0 0 1px rgba(0,0,0,0.3)' }}>{label}</div>
                   </button>
                 );
               })}

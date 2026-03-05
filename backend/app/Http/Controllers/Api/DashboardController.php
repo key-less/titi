@@ -38,6 +38,7 @@ class DashboardController
         $ticketsError = null;
 
         $openList = [];
+        $resolvedMonthList = [];
         try {
             $openList = $listMyTickets->execute(['openOnly' => true, 'limit' => 500]);
             $openTickets = count($openList);
@@ -46,19 +47,29 @@ class DashboardController
         }
 
         try {
-            $resolvedFilter = ['status' => $resolvedIds, 'limit' => 500];
-            // Resueltos hoy: solo Complete (Closed) y completedDate dentro de hoy (sin caché para que siempre esté actualizado)
-            $resolvedFilterToday = $resolvedFilter + ['completedDateGte' => $todayStart, 'completedDateLte' => $todayEnd, 'skipCache' => true];
-            $resolvedToday = count($listMyTickets->execute($resolvedFilterToday));
-
-            $resolvedFilterWeek = $resolvedFilter + ['completedDateGte' => $weekStart];
-            $resolvedWeekList = $listMyTickets->execute($resolvedFilterWeek);
-            $resolvedWeek = count($resolvedWeekList);
-
-            // Resumen mensual: tickets en Complete (Closed) con completedDate en el mes actual
-            $resolvedFilterMonth = $resolvedFilter + ['completedDateGte' => $monthStart, 'completedDateLte' => $monthEnd];
+            // Una sola llamada: todos los resueltos del mes; luego filtramos en PHP para hoy/semana/mes
+            $resolvedFilterMonth = [
+                'status' => $resolvedIds,
+                'limit' => 500,
+                'completedDateGte' => $monthStart,
+                'completedDateLte' => $monthEnd,
+            ];
             $resolvedMonthList = $listMyTickets->execute($resolvedFilterMonth);
             $resolvedMonth = count($resolvedMonthList);
+            $resolvedToday = 0;
+            $resolvedWeek = 0;
+            foreach ($resolvedMonthList as $t) {
+                if (!$t->completedDate) {
+                    continue;
+                }
+                $completed = Carbon::parse($t->completedDate);
+                if ($completed->between($todayStartLocal, $todayEndLocal)) {
+                    $resolvedToday++;
+                }
+                if ($completed->gte(Carbon::parse($weekStart))) {
+                    $resolvedWeek++;
+                }
+            }
 
             $byDay = [];
             for ($i = 6; $i >= 0; $i--) {
@@ -70,7 +81,7 @@ class DashboardController
                     'open' => 0,
                 ];
             }
-            foreach ($resolvedWeekList as $t) {
+            foreach ($resolvedMonthList as $t) {
                 if (!$t->completedDate) {
                     continue;
                 }
@@ -97,7 +108,7 @@ class DashboardController
                     'sla' => 30,
                 ];
             }
-            foreach ($resolvedWeekList as $t) {
+            foreach ($resolvedMonthList as $t) {
                 if (!$t->completedDate || !$t->createDate) {
                     continue;
                 }

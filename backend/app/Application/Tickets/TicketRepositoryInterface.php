@@ -28,4 +28,11 @@ interface TicketRepositoryInterface
      * Recurso (técnico) por ID para mostrar autor de notas. Devuelve array con firstName, lastName, etc. o null.
      */
     public function getResource(int $resourceId): ?array;
+
+    /**
+     * Varios Resources por ID en una sola llamada.
+     * @param list<int> $ids
+     * @return array<int, array> id => item crudo de la API
+     */
+    public function getResourcesByIds(array $ids): array;
 }

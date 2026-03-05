@@ -7,6 +7,10 @@ use App\Domain\Entities\Ticket;
 
 final class GetTicketWithSuggestions
 {
+    /**
+     * @param TicketRepositoryInterface $ticketRepository Repositorio con getTicketWithDetails, getTicketNotes, getResourcesByIds
+     * @param SuggestionsServiceInterface $suggestionsService
+     */
     public function __construct(
         private TicketRepositoryInterface $ticketRepository,
         private SuggestionsServiceInterface $suggestionsService
@@ -48,24 +52,36 @@ final class GetTicketWithSuggestions
      */
     private function notesToArray(array $notes): array
     {
-        $out = [];
-        $creatorCache = [];
+        $creatorIds = [];
         foreach ($notes as $n) {
             $creatorId = isset($n['creatorResourceID']) ? (int) $n['creatorResourceID'] : (isset($n['creatorResourceId']) ? (int) $n['creatorResourceId'] : null);
-            $creatorName = null;
             if ($creatorId !== null && $creatorId > 0) {
-                if (!isset($creatorCache[$creatorId])) {
-                    $res = $this->ticketRepository->getResource($creatorId);
-                    $creatorCache[$creatorId] = $res ? trim(($res['firstName'] ?? $res['FirstName'] ?? '') . ' ' . ($res['lastName'] ?? $res['LastName'] ?? '')) : null;
-                }
-                $creatorName = $creatorCache[$creatorId] ?? (string) $creatorId;
+                $creatorIds[$creatorId] = true;
             }
+        }
+        $creatorIds = array_keys($creatorIds);
+        $creatorNames = [];
+        if ($creatorIds !== []) {
+            /** @var TicketRepositoryInterface $repo */
+            $repo = $this->ticketRepository;
+            $resources = $repo->getResourcesByIds($creatorIds);
+            foreach ($resources as $id => $res) {
+                $creatorNames[$id] = trim(($res['firstName'] ?? $res['FirstName'] ?? '') . ' ' . ($res['lastName'] ?? $res['LastName'] ?? ''));
+            }
+        }
+
+        $out = [];
+        foreach ($notes as $n) {
+            $creatorId = isset($n['creatorResourceID']) ? (int) $n['creatorResourceID'] : (isset($n['creatorResourceId']) ? (int) $n['creatorResourceId'] : null);
+            $creatorName = ($creatorId !== null && $creatorId > 0 && isset($creatorNames[$creatorId]))
+                ? $creatorNames[$creatorId]
+                : (($creatorId !== null && $creatorId > 0) ? (string) $creatorId : '—');
             $out[] = [
                 'id' => $n['id'] ?? $n['ID'] ?? null,
                 'description' => $n['description'] ?? $n['Description'] ?? '',
                 'createDate' => $n['createDate'] ?? $n['CreateDate'] ?? null,
                 'creatorResourceId' => $creatorId,
-                'creatorName' => $creatorName ?? '—',
+                'creatorName' => $creatorName ?: '—',
             ];
         }
         return $out;
@@ -108,6 +124,7 @@ final class GetTicketWithSuggestions
             'fullName' => $t->contact->fullName(),
             'email' => $t->contact->email,
             'phone' => $t->contact->phone,
+            'extension' => $t->contact->extension,
             'title' => $t->contact->title,
         ] : null;
         $arr['assignedResource'] = $t->assignedResource ? $this->resourceToArray($t->assignedResource) : null;
@@ -126,6 +143,8 @@ final class GetTicketWithSuggestions
             'initials' => $r->initials(),
             'email' => $r->email,
             'userName' => $r->userName,
+            'phone' => $r->phone,
+            'extension' => $r->extension,
         ];
     }
 }

@@ -62,7 +62,7 @@ Route::prefix('tickets')->group(function () {
                 'secret_length' => $hasSecret ? strlen($secret) : 0,
                 'integration_code_length' => $hasCode ? strlen($code) : 0,
             ];
-            $webUrl = config('autotask.web_url', 'https://ww3.autotask.net');
+            $webUrl = rtrim((string) config('autotask.web_url', 'https://ww3.autotask.net'), '/');
             $ticketDetailUrl = $webUrl . '/Autotask/AutotaskExtend/ExecuteCommand.aspx?Code=OpenTicketDetail&TicketID=';
             return response()->json([
                 'backend' => 'ok',
@@ -75,7 +75,7 @@ Route::prefix('tickets')->group(function () {
                 'credentials_check' => $credentials_check,
                 'hint' => !$hasUser || !$hasSecret || !$hasCode
                     ? 'Completa AUTOTASK_USERNAME, AUTOTASK_SECRET, AUTOTASK_INTEGRATION_CODE en .env (sin espacios al pegar).'
-                    : 'Si acabas de cambiar .env ejecuta en backend: php artisan config:clear y reinicia el servidor. Si sigue 401: usuario debe ser API User (API-only), Tracking identifier en Security debe coincidir exactamente con AUTOTASK_INTEGRATION_CODE. Zona: GET /api/tickets/zone-info?username=TU_USER',
+                    : 'Si acabas de cambiar .env (incl. AUTOTASK_WEB_URL) ejecuta: php artisan config:clear y reinicia el servidor. Si el enlace "Ver en AutoTask" abre en otra zona (ej. ww3 en vez de ww14), hace falta config:clear. Si sigue 401: usuario API User (API-only), Tracking identifier = AUTOTASK_INTEGRATION_CODE.',
             ], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
         } catch (\Throwable $e) {
             return response()->json([

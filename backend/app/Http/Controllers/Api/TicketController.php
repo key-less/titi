@@ -6,9 +6,10 @@ use App\Application\Tickets\GetTicketWithSuggestions;
 use App\Application\Tickets\ListMyTickets;
 use App\Http\Controllers\Controller;
 use App\Infrastructure\AutoTask\AutoTaskApiClient;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 
 final class TicketController extends Controller
 {
@@ -118,6 +119,7 @@ final class TicketController extends Controller
 
     /**
      * Obtiene un mapa id => {id, fullName, initials} de Resources (AutoTask) para los assignedResourceId de los tickets.
+     * Usa caché por conjunto de IDs para evitar llamadas repetidas.
      *
      * @param array<\App\Domain\Entities\Ticket> $tickets
      * @return array<int, array{id: int, fullName: string, initials: string}>
@@ -133,6 +135,16 @@ final class TicketController extends Controller
         $ids = array_keys($ids);
         if ($ids === []) {
             return [];
+        }
+        sort($ids);
+        $baseKey = config('helpdex_cache.keys.resources_map', 'helpdex_resources_map');
+        $cacheKey = $baseKey . '_' . md5(implode(',', $ids));
+        $cacheTtl = (int) config('helpdex_cache.ttl.resources_map', config('autotask.cache_ttl', 60));
+        if ($cacheTtl > 0) {
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null && is_array($cached)) {
+                return $cached;
+            }
         }
         try {
             $filter = [
@@ -164,6 +176,9 @@ final class TicketController extends Controller
                     'initials' => strtoupper($initials),
                 ];
             }
+            if ($cacheTtl > 0) {
+                Cache::put($cacheKey, $map, $cacheTtl);
+            }
             return $map;
         } catch (\Throwable $e) {
             return [];
@@ -180,6 +195,8 @@ final class TicketController extends Controller
         if ($result === null) {
             return response()->json(['message' => 'Ticket not found'], 404);
         }
+        $webUrl = config('autotask.web_url', 'https://ww3.autotask.net');
+        $result['autotaskTicketDetailUrl'] = rtrim($webUrl, '/') . '/Autotask/AutotaskExtend/ExecuteCommand.aspx?Code=OpenTicketDetail&TicketID=';
         return response()->json($result);
     }
 }

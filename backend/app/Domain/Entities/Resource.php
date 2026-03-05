@@ -10,6 +10,8 @@ final class Resource
         public string $lastName,
         public ?string $email = null,
         public ?string $userName = null,
+        public ?string $phone = null,
+        public ?string $extension = null,
     ) {}
 
     public function fullName(): string
