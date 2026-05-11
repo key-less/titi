@@ -1,7 +1,3 @@
-/**
- * Dashboard HELPDEX — Operaciones Center
- * Datos desde AutoTask y Datto RMM (APIs). Sin datos predefinidos.
- */
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
@@ -23,7 +19,6 @@ import { usePatches } from "../../patches/hooks/usePatches";
 import { useDashboardMetrics } from "../hooks/useDashboardMetrics";
 import { fetchResources, fetchTicketStatus } from "../../tickets/api/ticketsApi";
 
-// Helper: formatea fecha para "Resuelto" / "Última actividad"
 function formatRelative(dateStr) {
   if (!dateStr) return "—";
   const d = new Date(dateStr);
@@ -39,18 +34,19 @@ function formatRelative(dateStr) {
 }
 
 const priorityConfig = {
-  Normal: { color: "#0ea5e9", bg: "rgba(14,165,233,0.12)", label: "Normal" },
-  Media: { color: "#22c55e", bg: "rgba(34,197,94,0.12)", label: "Media" },
-  Alta: { color: "#eab308", bg: "rgba(234,179,8,0.12)", label: "Alta" },
-  Critica: { color: "#ef4444", bg: "rgba(239,68,68,0.12)", label: "Crítica" },
+  Normal: { color: "#3b82f6", bg: "rgba(59,130,246,0.15)", label: "Normal", textClass: "text-blue-500", bgClass: "bg-blue-500/15" },
+  Media: { color: "#22c55e", bg: "rgba(34,197,94,0.15)", label: "Media", textClass: "text-green-500", bgClass: "bg-green-500/15" },
+  Alta: { color: "#eab308", bg: "rgba(234,179,8,0.15)", label: "Alta", textClass: "text-yellow-500", bgClass: "bg-yellow-500/15" },
+  Critica: { color: "#ef4444", bg: "rgba(239,68,68,0.15)", label: "Crítica", textClass: "text-red-500", bgClass: "bg-red-500/15" },
 };
 
-const categoryColor = {
-  Network: "#22d3ee",
-  M365: "#818cf8",
-  Server: "#fb923c",
-  Security: "#ef4444",
-  General: "#94a3b8",
+const statusColorClasses = {
+  "New": "text-cyan-400 bg-cyan-400/15",
+  "In Progress": "text-blue-400 bg-blue-400/15",
+  "Complete": "text-green-500 bg-green-500/15",
+  "Waiting Customer": "text-orange-500 bg-orange-500/15",
+  "Waiting Vendor": "text-yellow-500 bg-yellow-500/15",
+  "Work Complete": "text-green-500 bg-green-500/15",
 };
 
 function Ticker({ value, suffix = "" }) {
@@ -77,20 +73,9 @@ function Ticker({ value, suffix = "" }) {
 
 function LiveDot() {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-      <span
-        style={{
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          background: "#22c55e",
-          boxShadow: "0 0 0 0 rgba(34,197,94,0.6)",
-          animation: "pulse 1.8s infinite",
-        }}
-      />
-      <span style={{ fontSize: 10, color: "#22c55e", letterSpacing: 1.5, fontFamily: "monospace" }}>
-        LIVE
-      </span>
+    <span className="inline-flex items-center gap-1.5">
+      <span className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_0_0_rgba(34,197,94,0.6)] animate-[pulse_1.8s_infinite]" />
+      <span className="text-[10px] text-green-500 tracking-[1.5px] font-mono">LIVE</span>
     </span>
   );
 }
@@ -98,36 +83,17 @@ function LiveDot() {
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div
-        style={{
-          background: "#0f172a",
-          border: "1px solid #1e293b",
-          padding: "10px 14px",
-          borderRadius: 6,
-          fontSize: 12,
-          fontFamily: "monospace",
-          color: "#cbd5e1",
-        }}
-      >
-        <div style={{ color: "#64748b", marginBottom: 4 }}>{label}</div>
+      <div className="bg-popover border border-border px-3 py-2 rounded-md text-xs font-mono text-foreground shadow-lg">
+        <div className="text-muted-foreground mb-1">{label}</div>
         {payload.map((p, i) => (
           <div key={i} style={{ color: p.color }}>
-            {p.name}: <strong>{p.value}{p.name === "minutes" ? "m" : ""}</strong>
+            {p.name}: <strong className="font-bold">{p.value}{p.name === "minutes" ? "m" : ""}</strong>
           </div>
         ))}
       </div>
     );
   }
   return null;
-};
-
-const statusColor = {
-  "New": "#22d3ee",
-  "In Progress": "#0ea5e9",
-  "Complete": "#22c55e",
-  "Waiting Customer": "#f97316",
-  "Waiting Vendor": "#eab308",
-  "Work Complete": "#22c55e",
 };
 
 export function Dashboard() {
@@ -142,6 +108,7 @@ export function Dashboard() {
 
   const assignedResourceId =
     assignedToFilter === "" ? undefined : assignedToFilter === "me" ? "me" : Number(assignedToFilter);
+  
   const { tickets, loading: ticketsLoading, error: ticketsError, apiMessage, backendUnavailable, refetch: refetchTickets } = useTickets({
     limit: 100,
     openOnly: soloAbiertos,
@@ -162,6 +129,7 @@ export function Dashboard() {
     })();
     return () => { cancelled = true; };
   }, []);
+
   const { data: ticketDetail, loading: detailLoading, error: detailError, loadTicket: loadTicketDetail, clear: clearDetail } = useTicketWithSuggestions();
   const { patches: patchData } = usePatches();
   const { tickets: metricsTickets, patches: metricsPatches, slaBreached: metricsSlaBreached, generatedAt: metricsGeneratedAt, refetch: refetchMetrics } = useDashboardMetrics({ refetchIntervalMs: 60 * 1000 });
@@ -199,282 +167,165 @@ export function Dashboard() {
     d.toLocaleDateString("es-DO", { weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <>
-      <style>{`
-        .helpdex-card { background: #0a1628; border: 1px solid #1a2744; border-radius: 10px; animation: slideIn 0.4s ease forwards; }
-        .helpdex-card:hover { border-color: #0e4d91; transition: border-color 0.2s; }
-        .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 38px; font-weight: 700; line-height: 1; letter-spacing: -1px; }
-        .helpdex-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #475569; }
-        .ticket-row { border-bottom: 1px solid #0f1e35; transition: background 0.15s; cursor: pointer; }
-        .ticket-row:hover { background: #0d1d36; }
-        .ticket-row:last-child { border-bottom: none; }
-        .helpdex-badge { font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 700; letter-spacing: 1.5px; padding: 2px 7px; border-radius: 3px; text-transform: uppercase; }
-        .section-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #1e4976; padding-bottom: 12px; border-bottom: 1px solid #0f1e35; margin-bottom: 16px; }
-        .nav-item { padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; color: #475569; transition: all 0.15s; display: flex; align-items: center; gap: 10px; }
-        .nav-item:hover { background: #0d1d36; color: #94a3b8; }
-        .nav-item.active { background: #0e2a4d; color: #38bdf8; border-left: 2px solid #0ea5e9; }
-        .patch-bar { height: 6px; border-radius: 3px; background: #1a2744; overflow: hidden; }
-        .grid-bg { background-image: linear-gradient(rgba(14,77,145,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(14,77,145,0.05) 1px, transparent 1px); background-size: 32px 32px; }
-        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); } 70% { box-shadow: 0 0 0 6px rgba(34,197,94,0); } 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); } }
-        @keyframes slideIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes scanline { 0% { transform: translateY(-100%); } 100% { transform: translateY(100vh); } }
-        @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
-      `}</style>
-
-      <div style={{ display: "flex", minHeight: "100vh" }}>
-        <aside
-          style={{
-            width: 220,
-            background: "#06101e",
-            borderRight: "1px solid #0f1e35",
-            display: "flex",
-            flexDirection: "column",
-            padding: "24px 12px",
-            gap: 4,
-            position: "sticky",
-            top: 0,
-            height: "100vh",
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ padding: "0 8px 28px" }}>
-            <div
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#0ea5e9",
-                letterSpacing: 1,
-              }}
-            >
-              HELPDEX
-            </div>
-            <div
-              style={{
-                fontFamily: "'JetBrains Mono', monospace",
-                fontSize: 9,
-                color: "#1e3a5f",
-                letterSpacing: 2,
-                marginTop: 2,
-              }}
-            >
-              OPERATIONS CENTER
-            </div>
+    <div className="flex min-h-screen bg-background">
+      {/* Sidebar */}
+      <aside className="w-[220px] bg-card/50 border-r border-border flex flex-col py-6 px-3 gap-1 sticky top-0 h-screen shrink-0 backdrop-blur-md">
+        <div className="px-2 pb-6">
+          <div className="font-mono text-sm font-bold text-primary tracking-wide">
+            HELPDEX
           </div>
-          {[
-            { icon: "▣", label: "Dashboard", path: "/" },
-            { icon: "◈", label: "Mis Tickets", path: "/mis-tickets" },
-            { icon: "◉", label: "Parches", path: "/parches" },
-            { icon: "◎", label: "Dispositivos", path: "/dispositivos" },
-            { icon: "⬡", label: "IA Asistente", path: "/ia-asistente" },
-            { icon: "◇", label: "Reportes", path: "/reportes" },
-          ].map((item) => {
-            const isActive = item.path ? location.pathname === item.path || (item.path === "/" && (location.pathname === "/" || location.pathname === "/dashboard")) : false;
-            const content = (
-              <>
-                <span style={{ fontSize: 14, opacity: 0.7 }}>{item.icon}</span>
-                {item.label}
-              </>
-            );
-            return item.path ? (
-              <Link key={item.label} to={item.path} className={`nav-item ${isActive ? "active" : ""}`} style={{ textDecoration: "none", color: "inherit" }}>
-                {content}
-              </Link>
-            ) : (
-              <div key={item.label} className="nav-item" style={{ opacity: 0.6, cursor: "not-allowed" }} title="Próximamente">
-                {content}
-              </div>
-            );
-          })}
-          <div style={{ flex: 1 }} />
-          <div style={{ borderTop: "1px solid #0f1e35", paddingTop: 16, marginTop: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "0 8px" }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: "50%",
-                  background: "linear-gradient(135deg, #0ea5e9, #0284c7)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 800,
-                  fontSize: 13,
-                  color: "#fff",
-                  fontFamily: "monospace",
-                }}
-              >
-                AR
-              </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8" }}>Tech L2</div>
-                <div style={{ fontSize: 10, color: "#334155", fontFamily: "monospace" }}>
-                  AutoTask · Datto
-                </div>
-              </div>
-            </div>
+          <div className="font-mono text-[9px] text-muted-foreground tracking-[2px] mt-0.5">
+            OPERATIONS CENTER
           </div>
-        </aside>
-
-        <main
-          style={{ flex: 1, padding: "28px 32px", overflowY: "auto" }}
-          className="grid-bg"
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              marginBottom: 32,
-            }}
-          >
+        </div>
+        
+        {[
+          { icon: "▣", label: "Dashboard", path: "/" },
+          { icon: "◈", label: "Mis Tickets", path: "/mis-tickets" },
+          { icon: "◉", label: "Parches", path: "/parches" },
+          { icon: "◎", label: "Dispositivos", path: "/dispositivos" },
+          { icon: "⬡", label: "IA Asistente", path: "/ia-asistente" },
+          { icon: "◇", label: "Reportes", path: "/reportes" },
+        ].map((item) => {
+          const isActive = item.path ? location.pathname === item.path || (item.path === "/" && (location.pathname === "/" || location.pathname === "/dashboard")) : false;
+          const content = (
+            <>
+              <span className="text-sm opacity-70">{item.icon}</span>
+              {item.label}
+            </>
+          );
+          return item.path ? (
+            <Link 
+              key={item.label} 
+              to={item.path} 
+              className={`px-3 py-2 rounded-md cursor-pointer text-xs font-mono tracking-wide transition-all duration-200 flex items-center gap-2.5 ${isActive ? "bg-primary/10 text-primary border-l-2 border-primary shadow-sm" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+            >
+              {content}
+            </Link>
+          ) : (
+            <div key={item.label} className="px-3 py-2 rounded-md text-xs font-mono tracking-wide text-muted-foreground/60 flex items-center gap-2.5 cursor-not-allowed" title="Próximamente">
+              {content}
+            </div>
+          );
+        })}
+        
+        <div className="flex-1" />
+        <div className="border-t border-border pt-4 mt-2">
+          <div className="flex items-center gap-2.5 px-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-blue-700 flex items-center justify-center font-bold text-xs text-white font-mono shadow-md">
+              AR
+            </div>
             <div>
-              <h1
-                style={{
-                  fontFamily: "'Syne', sans-serif",
-                  fontSize: 26,
-                  fontWeight: 800,
-                  color: "#f1f5f9",
-                  lineHeight: 1,
-                }}
-              >
-                Dashboard Operacional
-              </h1>
-              <div style={{ fontFamily: "monospace", fontSize: 11, color: "#334155", marginTop: 6 }}>
-                {fmtDate(time)}
-              </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-              <LiveDot />
-              <div
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 22,
-                  fontWeight: 700,
-                  color: "#0ea5e9",
-                  letterSpacing: 1,
-                }}
-              >
-                {fmt(time)}
-              </div>
-              <button
-                onClick={() => { refetchTickets(); refetchMetrics(); }}
-                style={{
-                  background: "#0ea5e9",
-                  color: "#fff",
-                  border: "none",
-                  padding: "8px 16px",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  fontFamily: "monospace",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: 1,
-                }}
-              >
-                ↻ SYNC
-              </button>
+              <div className="text-xs font-semibold text-foreground/80">Tech L2</div>
+              <div className="text-[10px] text-muted-foreground font-mono">AutoTask · Datto</div>
             </div>
           </div>
+        </div>
+      </aside>
 
-          {metricsTickets?.error && (
-            <div style={{ marginBottom: 16, padding: "12px 16px", background: "rgba(234,179,8,0.12)", border: "1px solid rgba(234,179,8,0.3)", borderRadius: 8, fontFamily: "monospace", fontSize: 12, color: "#eab308" }}>
-              Métricas AutoTask/Datto: {metricsTickets.error} — Revisa .env y usa SYNC para reintentar.
+      {/* Main Content */}
+      <main className="flex-1 p-8 overflow-y-auto bg-[linear-gradient(rgba(59,130,246,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.03)_1px,transparent_1px)] bg-[size:32px_32px]">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="font-sans text-[26px] font-extrabold text-white leading-none">
+              Dashboard Operacional
+            </h1>
+            <div className="font-mono text-[11px] text-muted-foreground mt-1.5">
+              {fmtDate(time)}
             </div>
-          )}
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(5, 1fr)",
-              gap: 16,
-              marginBottom: 24,
-            }}
-          >
-            <div className="helpdex-card" style={{ padding: "20px 22px" }}>
-              <div className="helpdex-label" style={{ marginBottom: 10 }}>Tiempo resolución (avg)</div>
-              <div className="metric-value" style={{ color: "#22d3ee" }}>
-                {avgResponseMinutes != null ? `${avgResponseMinutes}m` : "—"}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
-                <span style={{ fontSize: 10, color: "#475569", fontFamily: "monospace" }}>
-                  {avgResponseMinutes != null ? "Últimos 7 días · AutoTask" : "Resueltos esta semana"}
-                </span>
-              </div>
+          </div>
+          <div className="flex items-center gap-5">
+            <LiveDot />
+            <div className="font-mono text-2xl font-bold text-primary tracking-wide">
+              {fmt(time)}
             </div>
-            <div className="helpdex-card" style={{ padding: "20px 22px" }}>
-              <div className="helpdex-label" style={{ marginBottom: 10 }}>Resueltos Hoy</div>
-              <div className="metric-value" style={{ color: "#22c55e" }}>
-                <Ticker value={resolvedTodayCount} />
-              </div>
-              <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                /{resolvedWeekCount} esta semana · AutoTask
-              </div>
-            </div>
-            <div className="helpdex-card" style={{ padding: "20px 22px" }}>
-              <div className="helpdex-label" style={{ marginBottom: 10 }}>Tickets Abiertos</div>
-              <div className="metric-value" style={{ color: "#f97316" }}>
-                <Ticker value={openTicketsCount} />
-              </div>
-              <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                AutoTask · en vivo
-              </div>
-            </div>
-            <div
-              className="helpdex-card"
-              style={{
-                padding: "20px 22px",
-                borderColor: (metricsSlaBreached ?? 0) > 0 ? "#3b1a1a" : "#1a2744",
-              }}
+            <button
+              onClick={() => { refetchTickets(); refetchMetrics(); }}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground border-none px-4 py-2 rounded-md cursor-pointer font-mono text-[11px] font-bold tracking-widest transition-colors shadow-sm"
             >
-              <div className="helpdex-label" style={{ marginBottom: 10 }}>SLA Breach</div>
-              <div
-                className="metric-value"
-                style={{ color: (metricsSlaBreached ?? 0) > 0 ? "#ef4444" : "#22c55e" }}
-              >
-                <Ticker value={metricsSlaBreached ?? 0} />
-              </div>
-              <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                {(metricsSlaBreached ?? 0) > 0 ? "⚠ Requiere atención" : "✓ Dentro del SLA"}
-              </div>
+              ↻ SYNC
+            </button>
+          </div>
+        </div>
+
+        {metricsTickets?.error && (
+          <div className="mb-4 px-4 py-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg font-mono text-xs text-yellow-500">
+            Métricas AutoTask/Datto: {metricsTickets.error} — Revisa .env y usa SYNC para reintentar.
+          </div>
+        )}
+
+        {/* Top Metrics Cards */}
+        <div className="grid grid-cols-5 gap-4 mb-6">
+          <div className="bg-card border border-border rounded-xl shadow-sm hover:border-primary/40 transition-colors duration-200 p-5 animate-[slideIn_0.4s_ease_forwards]">
+            <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mb-2.5">Tiempo resolución (avg)</div>
+            <div className="font-mono text-[38px] font-bold tracking-tight leading-none text-cyan-400">
+              {avgResponseMinutes != null ? `${avgResponseMinutes}m` : "—"}
             </div>
-            <div className="helpdex-card" style={{ padding: "20px 22px" }}>
-              <div className="helpdex-label" style={{ marginBottom: 10 }}>Dispositivos RMM</div>
-              <div className="metric-value" style={{ color: "#818cf8" }}>
-                <Ticker value={metricsPatches?.devicesTotal ?? 0} />
-              </div>
-              <div style={{ fontFamily: "monospace", fontSize: 10, color: "#334155", marginTop: 10 }}>
-                Datto RMM · total cuenta
-              </div>
+            <div className="flex items-center gap-1.5 mt-2.5">
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {avgResponseMinutes != null ? "Últimos 7 días · AutoTask" : "Resueltos esta semana"}
+              </span>
             </div>
           </div>
+          
+          <div className="bg-card border border-border rounded-xl shadow-sm hover:border-primary/40 transition-colors duration-200 p-5 animate-[slideIn_0.4s_ease_forwards] [animation-delay:50ms] opacity-0" style={{animationFillMode: 'forwards'}}>
+            <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mb-2.5">Resueltos Hoy</div>
+            <div className="font-mono text-[38px] font-bold tracking-tight leading-none text-green-500">
+              <Ticker value={resolvedTodayCount} />
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-2.5">
+              /{resolvedWeekCount} esta semana · AutoTask
+            </div>
+          </div>
+          
+          <div className="bg-card border border-border rounded-xl shadow-sm hover:border-primary/40 transition-colors duration-200 p-5 animate-[slideIn_0.4s_ease_forwards] [animation-delay:100ms] opacity-0" style={{animationFillMode: 'forwards'}}>
+            <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mb-2.5">Tickets Abiertos</div>
+            <div className="font-mono text-[38px] font-bold tracking-tight leading-none text-orange-500">
+              <Ticker value={openTicketsCount} />
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-2.5">
+              AutoTask · en vivo
+            </div>
+          </div>
+          
+          <div className={`bg-card border rounded-xl shadow-sm hover:border-primary/40 transition-colors duration-200 p-5 animate-[slideIn_0.4s_ease_forwards] [animation-delay:150ms] opacity-0 ${(metricsSlaBreached ?? 0) > 0 ? "border-red-900/50" : "border-border"}`} style={{animationFillMode: 'forwards'}}>
+            <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mb-2.5">SLA Breach</div>
+            <div className={`font-mono text-[38px] font-bold tracking-tight leading-none ${(metricsSlaBreached ?? 0) > 0 ? "text-red-500" : "text-green-500"}`}>
+              <Ticker value={metricsSlaBreached ?? 0} />
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-2.5">
+              {(metricsSlaBreached ?? 0) > 0 ? "⚠ Requiere atención" : "✓ Dentro del SLA"}
+            </div>
+          </div>
+          
+          <div className="bg-card border border-border rounded-xl shadow-sm hover:border-primary/40 transition-colors duration-200 p-5 animate-[slideIn_0.4s_ease_forwards] [animation-delay:200ms] opacity-0" style={{animationFillMode: 'forwards'}}>
+            <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mb-2.5">Dispositivos RMM</div>
+            <div className="font-mono text-[38px] font-bold tracking-tight leading-none text-indigo-400">
+              <Ticker value={metricsPatches?.devicesTotal ?? 0} />
+            </div>
+            <div className="font-mono text-[10px] text-muted-foreground mt-2.5">
+              Datto RMM · total cuenta
+            </div>
+          </div>
+        </div>
 
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: 16, marginBottom: 24 }}
-          >
-            <div className="helpdex-card" style={{ padding: "22px 24px" }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 20,
-                }}
-              >
-                <div>
-                  <div
-                    className="section-title"
-                    style={{ marginBottom: 4, paddingBottom: 0, borderBottom: "none" }}
-                  >
-                    TIEMPO DE RESOLUCIÓN — ÚLTIMOS 7 DÍAS
-                  </div>
-                  <div style={{ fontFamily: "monospace", fontSize: 10, color: "#1e4976" }}>
-                    Promedio minutos (creación → cierre) · línea roja = SLA 30 min
-                  </div>
+        {/* Charts Row */}
+        <div className="grid grid-cols-[1.6fr_1fr] gap-4 mb-6">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-5 pb-6">
+            <div className="flex justify-between items-center mb-5">
+              <div>
+                <div className="font-mono text-[10px] tracking-[3px] text-primary/80 uppercase mb-1">
+                  TIEMPO DE RESOLUCIÓN — ÚLTIMOS 7 DÍAS
                 </div>
-                <LiveDot />
+                <div className="font-mono text-[10px] text-muted-foreground">
+                  Promedio minutos (creación → cierre) · línea roja = SLA 30 min
+                </div>
               </div>
-              <div style={{ position: "relative", width: "100%", height: 180 }}>
+              <LiveDot />
+            </div>
+            
+            <div className="relative w-full h-[180px]">
               <ResponsiveContainer width="100%" height={180}>
                 <AreaChart data={responseTimeChartData}>
                   <defs>
@@ -483,15 +334,15 @@ export function Dashboard() {
                       <stop offset="95%" stopColor="#22d3ee" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid stroke="#0f1e35" strokeDasharray="4 4" />
+                  <CartesianGrid stroke="var(--color-border)" strokeDasharray="4 4" opacity={0.5} />
                   <XAxis
                     dataKey="time"
-                    tick={{ fill: "#334155", fontSize: 10, fontFamily: "monospace" }}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 10, fontFamily: "monospace" }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: "#334155", fontSize: 10, fontFamily: "monospace" }}
+                    tick={{ fill: "var(--color-muted-foreground)", fontSize: 10, fontFamily: "monospace" }}
                     axisLine={false}
                     tickLine={false}
                     unit="m"
@@ -516,476 +367,369 @@ export function Dashboard() {
                   />
                 </AreaChart>
               </ResponsiveContainer>
-                {responseTimeChartData.length === 0 && (
-                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "monospace", fontSize: 11, color: "#475569", pointerEvents: "none" }}>
-                    Sin datos (resueltos esta semana)
-                  </div>
-                )}
-              </div>
+              {responseTimeChartData.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center font-mono text-[11px] text-muted-foreground pointer-events-none">
+                  Sin datos (resueltos esta semana)
+                </div>
+              )}
             </div>
-            <div className="helpdex-card" style={{ padding: "22px 24px" }}>
-              <div className="section-title">TICKETS — SEMANA ACTUAL</div>
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart data={weeklyChartData} barGap={4}>
-                  <CartesianGrid stroke="#0f1e35" strokeDasharray="4 4" vertical={false} />
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fill: "#334155", fontSize: 10, fontFamily: "monospace" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fill: "#334155", fontSize: 10, fontFamily: "monospace" }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="resolved" fill="#22c55e" radius={[3, 3, 0, 0]} name="resolved" opacity={0.85} />
-                  <Bar dataKey="open" fill="#f97316" radius={[3, 3, 0, 0]} name="open" opacity={0.6} />
-                </BarChart>
-              </ResponsiveContainer>
-              <div style={{ display: "flex", gap: 16, marginTop: 12 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 2,
-                      background: "#22c55e",
-                    }}
-                  />
-                  <span style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }}>
-                    Resueltos
-                  </span>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 2,
-                      background: "#f97316",
-                    }}
-                  />
-                  <span style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }}>
-                    Abiertos
-                  </span>
-                </div>
+          </div>
+          
+          <div className="bg-card border border-border rounded-xl shadow-sm p-5 pb-6">
+            <div className="font-mono text-[10px] tracking-[3px] text-primary/80 uppercase pb-3 border-b border-border/50 mb-4">
+              TICKETS — SEMANA ACTUAL
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <BarChart data={weeklyChartData} barGap={4}>
+                <CartesianGrid stroke="var(--color-border)" strokeDasharray="4 4" vertical={false} opacity={0.5} />
+                <XAxis
+                  dataKey="day"
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10, fontFamily: "monospace" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "var(--color-muted-foreground)", fontSize: 10, fontFamily: "monospace" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="resolved" fill="#22c55e" radius={[3, 3, 0, 0]} name="resolved" opacity={0.85} />
+                <Bar dataKey="open" fill="#f97316" radius={[3, 3, 0, 0]} name="open" opacity={0.6} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="flex gap-4 mt-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-sm bg-green-500" />
+                <span className="font-mono text-[10px] text-muted-foreground">Resueltos</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-sm bg-orange-500" />
+                <span className="font-mono text-[10px] text-muted-foreground">Abiertos</span>
               </div>
             </div>
           </div>
+        </div>
 
-          <div
-            style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16, marginBottom: 24 }}
-          >
-            <div className="helpdex-card" style={{ padding: "22px 24px" }}>
-              <div className="section-title">RESUMEN MENSUAL</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-                {[
-                  { label: "Tickets resueltos", value: resolvedMonthCount, color: "#22c55e", suffix: "", max: Math.max(resolvedMonthCount, 50) },
-                  { label: "Horas facturadas", value: "—", color: "#818cf8", suffix: "h", max: 1 },
-                  { label: "SLA cumplido", value: "—", color: "#22d3ee", suffix: "%", max: 1 },
-                ].map((m) => (
-                  <div key={m.label}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontFamily: "monospace", fontSize: 11, color: "#475569" }}>
-                        {m.label}
-                      </span>
-                      <span
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: 14,
-                          fontWeight: 700,
-                          color: m.color,
-                        }}
-                      >
-                        {typeof m.value === "number" ? m.value + m.suffix : m.value}
-                      </span>
-                    </div>
-                    <div className="patch-bar">
-                      <div
-                        style={{
-                          height: "100%",
-                          width: `${typeof m.value === "number" && m.max > 0 ? Math.min((m.value / m.max) * 100, 100) : 0}%`,
-                          background: m.color,
-                          opacity: 0.8,
-                          borderRadius: 3,
-                          transition: "width 1s ease",
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {/* Bottom Metrics Row */}
+        <div className="grid grid-cols-[1fr_2fr] gap-4 mb-6">
+          <div className="bg-card border border-border rounded-xl shadow-sm p-5">
+            <div className="font-mono text-[10px] tracking-[3px] text-primary/80 uppercase pb-3 border-b border-border/50 mb-4">
+              RESUMEN MENSUAL
             </div>
-            <div className="helpdex-card" style={{ padding: "22px 24px" }}>
-              <div className="section-title">ESTADO DE PARCHES — DATTO RMM</div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
-                {patchData.length === 0 ? (
-                  <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "24px 16px", fontFamily: "monospace", fontSize: 11, color: "#475569" }}>
-                    Sin datos — conectar API Datto RMM
+            <div className="flex flex-col gap-4">
+              {[
+                { label: "Tickets resueltos", value: resolvedMonthCount, color: "#22c55e", suffix: "", max: Math.max(resolvedMonthCount, 50) },
+                { label: "Horas facturadas", value: "—", color: "#818cf8", suffix: "h", max: 1 },
+                { label: "SLA cumplido", value: "—", color: "#22d3ee", suffix: "%", max: 1 },
+              ].map((m) => (
+                <div key={m.label}>
+                  <div className="flex justify-between mb-1.5">
+                    <span className="font-mono text-[11px] text-muted-foreground">{m.label}</span>
+                    <span className="font-mono text-sm font-bold" style={{ color: m.color }}>
+                      {typeof m.value === "number" ? m.value + m.suffix : m.value}
+                    </span>
                   </div>
-                ) : patchData.map((p) => (
-                  <div key={p.name}>
+                  <div className="h-1.5 rounded-full bg-border overflow-hidden">
                     <div
+                      className="h-full rounded-full opacity-80 transition-all duration-1000 ease-out"
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: 12,
+                        width: `${typeof m.value === "number" && m.max > 0 ? Math.min((m.value / m.max) * 100, 100) : 0}%`,
+                        background: m.color,
                       }}
-                    >
-                      <span
-                        style={{
-                          fontFamily: "monospace",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: "#94a3b8",
-                        }}
-                      >
-                        {p.name}
-                      </span>
-                      {p.critical > 0 && (
-                        <span
-                          className="helpdex-badge"
-                          style={{ background: "rgba(239,68,68,0.15)", color: "#ef4444" }}
-                        >
-                          {p.critical} CRÍTICO
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ display: "flex", gap: 12, marginBottom: 14 }}>
-                      <div style={{ flex: 1, textAlign: "center" }}>
-                        <div
-                          style={{
-                            fontFamily: "monospace",
-                            fontSize: 22,
-                            fontWeight: 700,
-                            color: "#22c55e",
-                          }}
-                        >
-                          {p.compliant}%
-                        </div>
-                        <div className="helpdex-label" style={{ marginTop: 2 }}>Compliant</div>
-                      </div>
-                      <div style={{ flex: 1, textAlign: "center" }}>
-                        <div
-                          style={{
-                            fontFamily: "monospace",
-                            fontSize: 22,
-                            fontWeight: 700,
-                            color: "#f97316",
-                          }}
-                        >
-                          {p.pending}%
-                        </div>
-                        <div className="helpdex-label" style={{ marginTop: 2 }}>Pendientes</div>
-                      </div>
-                    </div>
-                    <div
-                      style={{
-                        height: 8,
-                        borderRadius: 4,
-                        overflow: "hidden",
-                        background: "#1a2744",
-                        display: "flex",
-                      }}
-                    >
-                      <div style={{ width: `${p.compliant}%`, background: "#22c55e", opacity: 0.8 }} />
-                      <div
-                        style={{
-                          width: `${Math.max(0, (p.pending ?? 0) - (p.critical ?? 0))}%`,
-                          background: "#f97316",
-                          opacity: 0.7,
-                        }}
-                      />
-                      <div style={{ width: `${p.critical}%`, background: "#ef4444" }} />
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-                      <span style={{ fontFamily: "monospace", fontSize: 9, color: "#22c55e" }}>OK</span>
-                      <span style={{ fontFamily: "monospace", fontSize: 9, color: "#f97316" }}>
-                        PENDING
-                      </span>
-                      <span style={{ fontFamily: "monospace", fontSize: 9, color: "#ef4444" }}>
-                        CRITICAL
-                      </span>
-                    </div>
+                    />
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="helpdex-card" style={{ padding: "22px 24px" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 4,
-              }}
-            >
-              <div
-                className="section-title"
-                style={{ marginBottom: 0, paddingBottom: 0, borderBottom: "none" }}
-              >
-                {soloAbiertos ? 'TICKETS ABIERTOS' : 'MIS TICKETS (HISTORIAL)'} — AUTOTASK
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <Link
-                  to="/mis-tickets"
-                  style={{
-                    background: "transparent",
-                    border: "1px solid #1a2744",
-                    color: "#475569",
-                    padding: "5px 12px",
-                    borderRadius: 5,
-                    fontFamily: "monospace",
-                    fontSize: 10,
-                    letterSpacing: 1,
-                    textDecoration: "none",
-                  }}
-                >
-                  VER TODOS →
-                </Link>
-                <label style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "monospace", fontSize: 10, color: "#475569", letterSpacing: 1 }}>
-                  Asignado a:
-                  <select
-                    value={assignedToFilter}
-                    onChange={(e) => setAssignedToFilter(e.target.value)}
-                    style={{
-                      background: "#0a1628",
-                      border: "1px solid #1a2744",
-                      color: "#cbd5e1",
-                      padding: "5px 10px",
-                      borderRadius: 5,
-                      fontFamily: "monospace",
-                      fontSize: 11,
-                      cursor: "pointer",
-                      minWidth: 140,
-                    }}
-                  >
-                    <option value="">Todos</option>
-                    {myResourceId != null && <option value="me">Yo</option>}
-                    {resources.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        {r.fullName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {!soloAbiertos && (
-                  <button
-                    type="button"
-                    onClick={() => setSoloAbiertos(true)}
-                    style={{ padding: "5px 10px", background: "rgba(14,165,233,0.12)", border: "1px solid #1a2744", color: "#38bdf8", borderRadius: 5, fontFamily: "monospace", fontSize: 10, cursor: "pointer" }}
-                  >
-                    Solo abiertos
-                  </button>
-                )}
-                <button
-                  onClick={() => refetchTickets()}
-                  style={{
-                    background: "transparent",
-                    border: "1px solid #1a2744",
-                    color: "#475569",
-                    padding: "5px 12px",
-                    borderRadius: 5,
-                    fontFamily: "monospace",
-                    fontSize: 10,
-                    cursor: "pointer",
-                    letterSpacing: 1,
-                  }}
-                >
-                  ↻ ACTUALIZAR
-                </button>
-              </div>
-            </div>
-            <div style={{ borderBottom: "1px solid #0f1e35", marginBottom: 16 }} />
-            {backendUnavailable && (
-              <div style={{ padding: "12px 16px", background: "rgba(249,115,22,0.12)", borderRadius: 6, marginBottom: 12, fontFamily: "monospace", fontSize: 12, color: "#f97316" }}>
-                Backend no disponible (conexión rechazada). Inicia el backend con <strong>php artisan serve</strong> en la carpeta backend.
-              </div>
-            )}
-            {apiMessage && !backendUnavailable && (
-              <div style={{ padding: "12px 16px", background: "rgba(14,165,233,0.12)", borderRadius: 6, marginBottom: 12, fontFamily: "monospace", fontSize: 12, color: "#38bdf8" }}>
-                {apiMessage}
-              </div>
-            )}
-            {ticketsError && !backendUnavailable && !apiMessage && (
-              <div style={{ padding: "12px 16px", background: "rgba(239,68,68,0.1)", borderRadius: 6, marginBottom: 12, fontFamily: "monospace", fontSize: 12, color: "#ef4444" }}>
-                {ticketsError}
-              </div>
-            )}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "100px 1fr 100px 90px 70px 80px",
-                gap: 12,
-                padding: "0 16px 10px",
-              }}
-            >
-              {["TICKET", "TÍTULO / ESTATUS", "PRIORIDAD", "ESTADO", "ACTIVIDAD", "TECH"].map((h) => (
-                <div key={h} className="helpdex-label">
-                  {h}
                 </div>
               ))}
             </div>
-            {ticketsLoading ? (
-              <div style={{ padding: 24, textAlign: "center", color: "#64748b", fontFamily: "monospace", fontSize: 12 }}>Cargando tickets…</div>
-            ) : tickets.length === 0 && !backendUnavailable ? (
-              <div style={{ padding: 32, textAlign: "center", color: "#64748b", fontFamily: "monospace", fontSize: 13, borderTop: "1px solid #0f1e35" }}>
-                {soloAbiertos ? 'No hay tickets abiertos en este momento.' : 'No hay tickets que mostrar.'}
-                {apiMessage && <div style={{ marginTop: 10, color: "#38bdf8", fontSize: 12 }}>{apiMessage}</div>}
-                {soloAbiertos && (
-                  <button
-                    type="button"
-                    onClick={() => setSoloAbiertos(false)}
-                    style={{ marginTop: 14, padding: "8px 16px", background: "rgba(14,165,233,0.15)", border: "1px solid rgba(14,165,233,0.3)", color: "#38bdf8", borderRadius: 6, fontFamily: "monospace", fontSize: 11, cursor: "pointer" }}
-                  >
-                    Ver todos los tickets (historial)
-                  </button>
-                )}
+          </div>
+          
+          <div className="bg-card border border-border rounded-xl shadow-sm p-5">
+            <div className="font-mono text-[10px] tracking-[3px] text-primary/80 uppercase pb-3 border-b border-border/50 mb-4">
+              ESTADO DE PARCHES — DATTO RMM
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              {patchData.length === 0 ? (
+                <div className="col-span-2 text-center py-6 font-mono text-[11px] text-muted-foreground">
+                  Sin datos — conectar API Datto RMM
+                </div>
+              ) : patchData.map((p) => (
+                <div key={p.name}>
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="font-mono text-xs font-bold text-foreground/80">{p.name}</span>
+                    {p.critical > 0 && (
+                      <span className="font-mono text-[9px] font-bold tracking-widest px-2 py-0.5 rounded bg-red-500/15 text-red-500 uppercase">
+                        {p.critical} CRÍTICO
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-3 mb-3">
+                    <div className="flex-1 text-center">
+                      <div className="font-mono text-[22px] font-bold text-green-500">{p.compliant}%</div>
+                      <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mt-0.5">Compliant</div>
+                    </div>
+                    <div className="flex-1 text-center">
+                      <div className="font-mono text-[22px] font-bold text-orange-500">{p.pending}%</div>
+                      <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mt-0.5">Pendientes</div>
+                    </div>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden bg-border flex">
+                    <div style={{ width: `${p.compliant}%` }} className="bg-green-500 opacity-80" />
+                    <div style={{ width: `${Math.max(0, (p.pending ?? 0) - (p.critical ?? 0))}%` }} className="bg-orange-500 opacity-70" />
+                    <div style={{ width: `${p.critical}%` }} className="bg-red-500" />
+                  </div>
+                  <div className="flex justify-between mt-1.5">
+                    <span className="font-mono text-[9px] text-green-500">OK</span>
+                    <span className="font-mono text-[9px] text-orange-500">PENDING</span>
+                    <span className="font-mono text-[9px] text-red-500">CRITICAL</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Tickets List */}
+        <div className="bg-card border border-border rounded-xl shadow-sm p-5 pb-2">
+          <div className="flex justify-between items-center mb-1">
+            <div className="font-mono text-[10px] tracking-[3px] text-primary/80 uppercase">
+              {soloAbiertos ? 'TICKETS ABIERTOS' : 'MIS TICKETS (HISTORIAL)'} — AUTOTASK
+            </div>
+            <div className="flex items-center gap-3 flex-wrap">
+              <Link
+                to="/mis-tickets"
+                className="bg-transparent border border-border text-muted-foreground px-3 py-1.5 rounded-md font-mono text-[10px] tracking-widest no-underline hover:border-primary/50 hover:text-foreground transition-colors"
+              >
+                VER TODOS →
+              </Link>
+              <label className="flex items-center gap-1.5 font-mono text-[10px] text-muted-foreground tracking-widest">
+                Asignado a:
+                <select
+                  value={assignedToFilter}
+                  onChange={(e) => setAssignedToFilter(e.target.value)}
+                  className="bg-background border border-border text-foreground px-2.5 py-1.5 rounded-md font-mono text-[11px] cursor-pointer min-w-[140px] focus:outline-none focus:border-primary/50"
+                >
+                  <option value="">Todos</option>
+                  {myResourceId != null && <option value="me">Yo</option>}
+                  {resources.map((r) => (
+                    <option key={r.id} value={r.id}>{r.fullName}</option>
+                  ))}
+                </select>
+              </label>
+              {!soloAbiertos && (
+                <button
+                  type="button"
+                  onClick={() => setSoloAbiertos(true)}
+                  className="px-2.5 py-1.5 bg-blue-500/10 border border-border text-blue-400 rounded-md font-mono text-[10px] cursor-pointer hover:bg-blue-500/20 transition-colors tracking-widest"
+                >
+                  Solo abiertos
+                </button>
+              )}
+              <button
+                onClick={() => refetchTickets()}
+                className="bg-transparent border border-border text-muted-foreground px-3 py-1.5 rounded-md font-mono text-[10px] cursor-pointer tracking-widest hover:border-primary/50 hover:text-foreground transition-colors"
+              >
+                ↻ ACTUALIZAR
+              </button>
+            </div>
+          </div>
+          
+          <div className="border-b border-border/50 mb-4 mt-3" />
+          
+          {backendUnavailable && (
+            <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-md mb-3 font-mono text-xs text-orange-500">
+              Backend no disponible (conexión rechazada). Inicia el backend con <strong>php artisan serve</strong> en la carpeta backend.
+            </div>
+          )}
+          
+          {apiMessage && !backendUnavailable && (
+            <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-md mb-3 font-mono text-xs text-blue-400">
+              {apiMessage}
+            </div>
+          )}
+          
+          {ticketsError && !backendUnavailable && !apiMessage && (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md mb-3 font-mono text-xs text-red-500">
+              {ticketsError}
+            </div>
+          )}
+
+          <div className="grid grid-cols-[100px_1fr_100px_90px_70px_80px] gap-3 px-4 pb-2.5">
+            {["TICKET", "TÍTULO / ESTATUS", "PRIORIDAD", "ESTADO", "ACTIVIDAD", "TECH"].map((h) => (
+              <div key={h} className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground">
+                {h}
               </div>
-            ) : (
-              tickets.map((t, i) => {
+            ))}
+          </div>
+
+          {ticketsLoading ? (
+            <div className="p-6 text-center text-muted-foreground font-mono text-xs">Cargando tickets…</div>
+          ) : tickets.length === 0 && !backendUnavailable ? (
+            <div className="p-8 text-center text-muted-foreground font-mono text-[13px] border-t border-border/50">
+              {soloAbiertos ? 'No hay tickets abiertos en este momento.' : 'No hay tickets que mostrar.'}
+              {apiMessage && <div className="mt-2.5 text-blue-400 text-xs">{apiMessage}</div>}
+              {soloAbiertos && (
+                <button
+                  type="button"
+                  onClick={() => setSoloAbiertos(false)}
+                  className="mt-3.5 px-4 py-2 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded-md font-mono text-[11px] cursor-pointer hover:bg-blue-500/20 transition-colors"
+                >
+                  Ver todos los tickets (historial)
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col">
+              {tickets.map((t, i) => {
                 const statusLbl = t.statusLabel || t.status || "—";
-                const priorityLbl = (priorityConfig[t.priorityLabel] && priorityConfig[t.priorityLabel].label) ? priorityConfig[t.priorityLabel].label : (t.priorityLabel || "—");
-                const priorityStyle = priorityConfig[t.priorityLabel] || { bg: "rgba(148,163,184,0.12)", color: "#94a3b8" };
-                const statusStyle = statusColor[statusLbl] || "#94a3b8";
+                const priorityConfigMatch = priorityConfig[t.priorityLabel];
+                const priorityLbl = priorityConfigMatch ? priorityConfigMatch.label : (t.priorityLabel || "—");
+                const priorityClasses = priorityConfigMatch ? `${priorityConfigMatch.bgClass} ${priorityConfigMatch.textClass}` : "bg-slate-500/15 text-slate-400";
+                const statusClasses = statusColorClasses[statusLbl] || "bg-slate-500/15 text-slate-400";
+                
                 return (
-                  <div key={t.id} style={{ animationDelay: `${i * 0.05}s` }}>
+                  <div key={t.id} className="animate-[slideIn_0.3s_ease_forwards] opacity-0" style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'forwards' }}>
                     <div
-                      className="ticket-row"
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "100px 1fr 100px 90px 70px 80px",
-                        gap: 12,
-                        padding: "14px 16px",
-                        alignItems: "center",
-                      }}
+                      className={`grid grid-cols-[100px_1fr_100px_90px_70px_80px] gap-3 px-4 py-3.5 items-center border-b border-border/50 transition-colors duration-150 cursor-pointer ${activeTicket === t.id ? "bg-muted/50" : "hover:bg-muted/30"}`}
                       onClick={() => setActiveTicket(activeTicket === t.id ? null : t.id)}
                     >
-                      <div style={{ fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: "#0ea5e9" }}>
+                      <div className="font-mono text-xs font-bold text-primary">
                         {t.ticketNumber || t.id}
                       </div>
-                      <div>
-                        <div style={{ fontSize: 13, color: "#cbd5e1", fontWeight: 600, marginBottom: 4, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", maxWidth: 340 }}>
+                      <div className="min-w-0 pr-4">
+                        <div className="text-[13px] text-foreground font-semibold mb-1 truncate">
                           {t.title}
                         </div>
-                        <span className="helpdex-badge" style={{ background: `${statusStyle}18`, color: statusStyle }}>
+                        <span className={`font-mono text-[9px] font-bold tracking-widest px-2 py-0.5 rounded uppercase ${statusClasses}`}>
                           {statusLbl}
                         </span>
                       </div>
                       <div>
-                        <span className="helpdex-badge" style={{ background: priorityStyle.bg, color: priorityStyle.color }}>
+                        <span className={`font-mono text-[9px] font-bold tracking-widest px-2 py-0.5 rounded uppercase ${priorityClasses}`}>
                           {priorityLbl}
                         </span>
                       </div>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }} title="Última actividad">
+                      <div className="font-mono text-[10px] text-muted-foreground" title="Última actividad">
                         {formatRelative(t.completedDate || t.lastActivityDate)}
                       </div>
-                      <div style={{ fontFamily: "monospace", fontSize: 11, color: "#94a3b8" }}>
+                      <div className="font-mono text-[11px] text-foreground/60">
                         {t.estimatedHours != null ? `${Number(t.estimatedHours)}h` : "—"}
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div className="flex items-center gap-2">
                         {t.assignedResource ? (
-                          <div title={t.assignedResource.fullName} style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg, #0ea5e9, #0284c7)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 10, color: "#fff", fontFamily: "monospace" }}>
+                          <div title={t.assignedResource.fullName} className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-blue-700 flex items-center justify-center font-bold text-[10px] text-white font-mono shadow-sm">
                             {t.assignedResource.initials || "—"}
                           </div>
                         ) : (
-                          <span style={{ fontSize: 10, color: "#64748b" }}>—</span>
+                          <span className="text-[10px] text-muted-foreground">—</span>
                         )}
                       </div>
                     </div>
+                    
+                    {/* Expanded Detail Panel */}
                     {activeTicket === t.id && (
-                      <div style={{ background: "#0d1d36", borderTop: "1px solid #0f1e35", borderBottom: "1px solid #0f1e35", padding: "16px 20px", animation: "slideIn 0.2s ease" }}>
+                      <div className="bg-muted/40 border-y border-border/80 px-5 py-4 animate-[slideIn_0.2s_ease]">
                         {detailLoading ? (
-                          <div style={{ color: "#64748b", fontFamily: "monospace", fontSize: 12 }}>Cargando detalle y sugerencias IA…</div>
+                          <div className="text-muted-foreground font-mono text-xs">Cargando detalle y sugerencias IA…</div>
                         ) : detailError ? (
-                          <div style={{ padding: "12px 16px", background: "rgba(239,68,68,0.1)", borderRadius: 6, fontFamily: "monospace", fontSize: 12, color: "#ef4444" }}>
+                          <div className="p-3 bg-red-500/10 rounded-md font-mono text-xs text-red-500">
                             No se pudo cargar el detalle: {detailError}
                           </div>
                         ) : ticketDetail?.ticket ? (
                           <>
                             {ticketDetail.ticket.description && (
-                              <div style={{ marginBottom: 14 }}>
-                                <div style={{ fontFamily: "monospace", fontSize: 9, color: "#64748b", letterSpacing: 1, marginBottom: 6 }}>DESCRIPCIÓN DEL PROBLEMA</div>
-                                <p style={{ fontFamily: "monospace", fontSize: 12, color: "#cbd5e1", lineHeight: 1.7, maxWidth: 720, whiteSpace: "pre-wrap", margin: 0 }}>{ticketDetail.ticket.description}</p>
+                              <div className="mb-3.5">
+                                <div className="font-mono text-[9px] text-muted-foreground tracking-widest mb-1.5 uppercase">Descripción del problema</div>
+                                <p className="font-mono text-xs text-foreground/90 leading-relaxed max-w-3xl whitespace-pre-wrap m-0">
+                                  {ticketDetail.ticket.description}
+                                </p>
                               </div>
                             )}
-                            <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 14 }}>
-                              <div style={{ fontFamily: "monospace", fontSize: 11 }}>
-                                <span style={{ color: "#64748b" }}>Estatus: </span>
-                                <span style={{ color: "#cbd5e1", fontWeight: 600 }}>{ticketDetail.ticket.statusLabel ?? ticketDetail.ticket.status ?? "—"}</span>
+                            
+                            <div className="flex flex-col gap-3 mb-3.5">
+                              <div className="font-mono text-[11px]">
+                                <span className="text-muted-foreground">Estatus: </span>
+                                <span className="text-foreground font-semibold">{ticketDetail.ticket.statusLabel ?? ticketDetail.ticket.status ?? "—"}</span>
                               </div>
-                              <div style={{ fontFamily: "monospace", fontSize: 11 }}>
-                                <span style={{ color: "#64748b" }}>Cuenta (Company): </span>
-                                <strong style={{ color: "#cbd5e1" }}>{ticketDetail.ticket.account?.companyName ?? "—"}</strong>
-                                {ticketDetail.ticket.account?.phone && <span style={{ color: "#475569", marginLeft: 8 }}> · {ticketDetail.ticket.account.phone}</span>}
+                              <div className="font-mono text-[11px]">
+                                <span className="text-muted-foreground">Cuenta (Company): </span>
+                                <strong className="text-foreground">{ticketDetail.ticket.account?.companyName ?? "—"}</strong>
+                                {ticketDetail.ticket.account?.phone && <span className="text-muted-foreground ml-2"> · {ticketDetail.ticket.account.phone}</span>}
                               </div>
-                              <div style={{ fontFamily: "monospace", fontSize: 11 }}>
-                                <span style={{ color: "#64748b" }}>Contacto: </span>
-                                <strong style={{ color: "#cbd5e1" }}>{ticketDetail.ticket.contact?.fullName ?? "—"}</strong>
-                                {ticketDetail.ticket.contact?.email && <span style={{ color: "#475569", marginLeft: 8 }}> · {ticketDetail.ticket.contact.email}</span>}
-                                {ticketDetail.ticket.contact?.phone && <span style={{ color: "#475569" }}> · Tel: {ticketDetail.ticket.contact.phone}</span>}
-                                {ticketDetail.ticket.contact?.extension && <span style={{ color: "#475569" }}> · Ext: {ticketDetail.ticket.contact.extension}</span>}
-                                {!ticketDetail.ticket.contact?.fullName && !ticketDetail.ticket.contact?.email && !ticketDetail.ticket.contact?.phone && <span style={{ color: "#475569" }}>—</span>}
+                              <div className="font-mono text-[11px]">
+                                <span className="text-muted-foreground">Contacto: </span>
+                                <strong className="text-foreground">{ticketDetail.ticket.contact?.fullName ?? "—"}</strong>
+                                {ticketDetail.ticket.contact?.email && <span className="text-muted-foreground ml-2"> · {ticketDetail.ticket.contact.email}</span>}
+                                {ticketDetail.ticket.contact?.phone && <span className="text-muted-foreground"> · Tel: {ticketDetail.ticket.contact.phone}</span>}
+                                {ticketDetail.ticket.contact?.extension && <span className="text-muted-foreground"> · Ext: {ticketDetail.ticket.contact.extension}</span>}
+                                {!ticketDetail.ticket.contact?.fullName && !ticketDetail.ticket.contact?.email && !ticketDetail.ticket.contact?.phone && <span className="text-muted-foreground">—</span>}
                               </div>
-                              <div style={{ fontFamily: "monospace", fontSize: 11 }}>
-                                <span style={{ color: "#64748b" }}>Técnico asignado: </span>
-                                <span style={{ color: "#cbd5e1" }}>{ticketDetail.ticket.assignedResource?.fullName || ticketDetail.ticket.creatorResource?.fullName || ticketDetail.ticket.completedByResource?.fullName || "—"}</span>
+                              <div className="font-mono text-[11px]">
+                                <span className="text-muted-foreground">Técnico asignado: </span>
+                                <span className="text-foreground">{ticketDetail.ticket.assignedResource?.fullName || ticketDetail.ticket.creatorResource?.fullName || ticketDetail.ticket.completedByResource?.fullName || "—"}</span>
                                 {(ticketDetail.ticket.assignedResource?.phone || ticketDetail.ticket.assignedResource?.extension) && (
-                                  <span style={{ color: "#475569", marginLeft: 8 }}>
+                                  <span className="text-muted-foreground ml-2">
                                     {ticketDetail.ticket.assignedResource?.phone && `Tel: ${ticketDetail.ticket.assignedResource.phone}`}
                                     {ticketDetail.ticket.assignedResource?.extension && ` · Ext: ${ticketDetail.ticket.assignedResource.extension}`}
                                   </span>
                                 )}
                               </div>
+                              
                               {(!ticketDetail.ticket.account?.companyName && !ticketDetail.ticket.contact?.fullName && !ticketDetail.ticket.assignedResource?.fullName && !ticketDetail.ticket.creatorResource?.fullName) && (
-                                <div style={{ fontFamily: "monospace", fontSize: 10, color: "#64748b", fontStyle: "italic" }}>
+                                <div className="font-mono text-[10px] text-muted-foreground italic">
                                   Si no aparecen datos, el ticket en AutoTask puede no tener cuenta, contacto o técnico asignado.
                                 </div>
                               )}
                             </div>
+                            
                             {ticketDetail.ticket.resolution && (
-                              <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginBottom: 14 }}>
-                                <div style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 6, padding: "6px 10px", flexShrink: 0 }}>
-                                  <span style={{ fontFamily: "monospace", fontSize: 9, color: "#22c55e", letterSpacing: 1 }}>✓ RESOLUCIÓN</span>
+                              <div className="flex gap-3 items-start mb-3.5">
+                                <div className="bg-green-500/10 border border-green-500/20 rounded-md px-2.5 py-1.5 shrink-0">
+                                  <span className="font-mono text-[9px] text-green-500 tracking-widest uppercase">✓ Resolución</span>
                                 </div>
-                                <p style={{ fontFamily: "monospace", fontSize: 12, color: "#94a3b8", lineHeight: 1.7, maxWidth: 700, margin: 0 }}>{ticketDetail.ticket.resolution}</p>
+                                <p className="font-mono text-xs text-foreground/70 leading-relaxed max-w-3xl m-0">
+                                  {ticketDetail.ticket.resolution}
+                                </p>
                               </div>
                             )}
+                            
                             {ticketDetail.suggestions?.length > 0 && (
-                              <div style={{ marginBottom: 14 }}>
-                                <div style={{ fontFamily: "monospace", fontSize: 9, color: "#818cf8", letterSpacing: 1, marginBottom: 8 }}>SUGERENCIAS IA</div>
-                                <ul style={{ margin: 0, paddingLeft: 18, fontFamily: "monospace", fontSize: 12, color: "#94a3b8", lineHeight: 1.7 }}>
+                              <div className="mb-3.5">
+                                <div className="font-mono text-[9px] text-indigo-400 tracking-widest mb-2 uppercase">Sugerencias IA</div>
+                                <ul className="m-0 pl-4 font-mono text-xs text-foreground/70 leading-relaxed list-disc">
                                   {ticketDetail.suggestions.map((s, idx) => (
-                                    <li key={idx}>{s}</li>
+                                    <li key={idx} className="mb-1">{s}</li>
                                   ))}
                                 </ul>
                               </div>
                             )}
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
-                              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                                <Link to={`/mis-tickets?ticket=${ticketDetail.ticket.id}`} style={{ background: "rgba(34,197,94,0.12)", border: "1px solid rgba(34,197,94,0.2)", color: "#22c55e", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>
+                            
+                            <div className="flex flex-col gap-2 mt-3 flex-wrap">
+                              <div className="flex gap-2.5 flex-wrap">
+                                <Link 
+                                  to={`/mis-tickets?ticket=${ticketDetail.ticket.id}`} 
+                                  className="bg-green-500/10 border border-green-500/20 text-green-500 px-3 py-1.5 rounded-md font-mono text-[10px] no-underline hover:bg-green-500/20 transition-colors"
+                                >
                                   Ver detalle en Mis Tickets →
                                 </Link>
                                 <a
                                   href={`${ticketDetail.autotaskTicketDetailUrl ?? autotaskTicketDetailUrl ?? "https://ww3.autotask.net/Autotask/AutotaskExtend/ExecuteCommand.aspx?Code=OpenTicketDetail&TicketID="}${ticketDetail.ticket.id}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  title="Abre en AutoTask. Debes estar logueado en AutoTask en este navegador. Si ves un error, verifica AUTOTASK_WEB_URL en .env (ej. https://ww14.autotask.net)."
-                                  style={{ background: "rgba(14,165,233,0.12)", border: "1px solid rgba(14,165,233,0.2)", color: "#38bdf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}
+                                  title="Abre en AutoTask. Debes estar logueado en AutoTask en este navegador."
+                                  className="bg-blue-500/10 border border-blue-500/20 text-blue-400 px-3 py-1.5 rounded-md font-mono text-[10px] no-underline hover:bg-blue-500/20 transition-colors"
                                 >
                                   Ver en AutoTask →
                                 </a>
-                                <Link to="/ia-asistente" style={{ background: "rgba(129,140,248,0.12)", border: "1px solid rgba(129,140,248,0.2)", color: "#818cf8", padding: "5px 12px", borderRadius: 5, fontFamily: "monospace", fontSize: 10, textDecoration: "none" }}>
+                                <Link 
+                                  to="/ia-asistente" 
+                                  className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 px-3 py-1.5 rounded-md font-mono text-[10px] no-underline hover:bg-indigo-500/20 transition-colors"
+                                >
                                   Preguntar a IA →
                                 </Link>
                               </div>
-                              <div style={{ fontFamily: "monospace", fontSize: 9, color: "#64748b" }}>
-                                Debes estar logueado en AutoTask en este navegador. Si ves error, verifica AUTOTASK_WEB_URL en .env (ej. https://ww14.autotask.net).
+                              <div className="font-mono text-[9px] text-muted-foreground mt-1">
+                                Debes estar logueado en AutoTask en este navegador. Si ves error, verifica AUTOTASK_WEB_URL en .env.
                               </div>
                             </div>
                           </>
@@ -994,24 +738,16 @@ export function Dashboard() {
                     )}
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
+            </div>
+          )}
+        </div>
 
-          <div
-            style={{
-              marginTop: 24,
-              textAlign: "center",
-              fontFamily: "monospace",
-              fontSize: 9,
-              color: "#1e3a5f",
-              letterSpacing: 2,
-            }}
-          >
-            HELPDEX v0.1.0 · AUTOTASK · DATTO RMM · Última actualización métricas: {metricsGeneratedAt ? new Date(metricsGeneratedAt).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}
-          </div>
-        </main>
-      </div>
-    </>
+        {/* Footer */}
+        <div className="mt-6 text-center font-mono text-[9px] text-muted-foreground tracking-[2px] uppercase">
+          HELPDEX v0.1.0 · AUTOTASK · DATTO RMM · Última actualización métricas: {metricsGeneratedAt ? new Date(metricsGeneratedAt).toLocaleTimeString("es", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "—"}
+        </div>
+      </main>
+    </div>
   );
 }

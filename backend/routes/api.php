@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\PatchController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TicketController;
 use App\Infrastructure\AutoTask\AutoTaskApiClient;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -78,9 +79,10 @@ Route::prefix('tickets')->group(function () {
                     : 'Si acabas de cambiar .env (incl. AUTOTASK_WEB_URL) ejecuta: php artisan config:clear y reinicia el servidor. Si el enlace "Ver en AutoTask" abre en otra zona (ej. ww3 en vez de ww14), hace falta config:clear. Si sigue 401: usuario API User (API-only), Tracking identifier = AUTOTASK_INTEGRATION_CODE.',
             ], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
         } catch (\Throwable $e) {
+            Log::error('Autotask status route error', ['msg' => $e->getMessage()]);
             return response()->json([
                 'backend' => 'ok',
-                'error' => $e->getMessage(),
+                'error' => 'Error al leer la configuración. Ejecuta php artisan config:clear.',
             ], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
         }
     });
@@ -151,7 +153,8 @@ Route::get('/resources', function () {
         usort($list, fn ($a, $b) => strcasecmp($a['fullName'], $b['fullName']));
         return response()->json(['resources' => $list], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
     } catch (\Throwable $e) {
-        return response()->json(['resources' => [], 'error' => $e->getMessage()], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
+        Log::error('Resources route error', ['msg' => $e->getMessage()]);
+        return response()->json(['resources' => [], 'error' => 'Error al obtener recursos de AutoTask.'], 200, ['Content-Type' => 'application/json'], JSON_UNESCAPED_UNICODE);
     }
 });
 

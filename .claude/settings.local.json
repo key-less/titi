@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx skills *)",
+      "Bash(git -C c:/titi log --oneline --all -- backend/.env)",
+      "Bash(git -C c:/titi log --oneline --all)",
+      "Bash(git -C c:/titi show HEAD:backend/.env)",
+      "Bash(Get-ChildItem -Path \"c:\\\\titi\\\\backend\\\\database\" -Recurse -Filter \"*.sqlite\")",
+      "Bash(php artisan *)",
+      "Skill(update-config)",
+      "Skill(update-config:*)",
+      "mcp__plugin_supabase_supabase__list_projects",
+      "mcp__plugin_supabase_supabase__list_tables",
+      "mcp__plugin_supabase_supabase__apply_migration",
+      "PowerShell(Resolve-DnsName \"db.hrudebcmiopiremhzvjr.supabase.co\" -Type A -ErrorAction SilentlyContinue)",
+      "PowerShell(Test-NetConnection -ComputerName \"db.hrudebcmiopiremhzvjr.supabase.co\" -Port 5432 -InformationLevel Quiet -WarningAction SilentlyContinue)",
+      "PowerShell(Resolve-DnsName \"aws-0-us-west-1.pooler.supabase.com\" -Type A -ErrorAction SilentlyContinue)",
+      "PowerShell(Test-NetConnection -ComputerName \"aws-0-us-west-1.pooler.supabase.com\" -Port 5432 -InformationLevel Quiet -WarningAction SilentlyContinue)",
+      "PowerShell(Test-NetConnection -ComputerName \"aws-0-us-west-1.pooler.supabase.com\" -Port 6543 -InformationLevel Quiet -WarningAction SilentlyContinue)",
+      "mcp__plugin_supabase_supabase__execute_sql",
+      "mcp__plugin_supabase_supabase__get_project",
+      "PowerShell(php -r \"echo PHP_VERSION . PHP_EOL; echo phpversion\\('pgsql'\\) . PHP_EOL;\"; php -r \"ob_start\\(\\); phpinfo\\(INFO_MODULES\\); \\\\$info = ob_get_clean\\(\\); preg_match\\('/pgsql[\\\\s\\\\S]{1,200}/', \\\\$info, \\\\$m\\); echo \\\\$m[0] ?? 'no pgsql info';\" 2>&1 | Select-Object -First 40)",
+      "PowerShell(python \"c:\\\\titi\\\\backend\\\\test_supabase_py.py\" 2>&1)",
+      "mcp__plugin_supabase_supabase__get_project_url",
+      "PowerShell(Get-Command psql -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Command pg_isready -ErrorAction SilentlyContinue)",
+      "PowerShell(Test-NetConnection -ComputerName \"db.hrudebcmiopiremhzvjr.supabase.co\" -Port 5432 -InformationLevel Quiet -WarningAction SilentlyContinue 2>&1)",
+      "PowerShell(ping -n 1 \"2600:1f1c:825:9500:2822:f30c:bdef:c45f\" 2>&1)",
+      "mcp__plugin_supabase_supabase__get_advisors"
+    ]
+  }
+}

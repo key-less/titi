@@ -1,21 +1,45 @@
-/* HELPDEX — estilos globales (basados en mockup dashboard.jsx) */
+@import "tailwindcss";
+
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap');
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+@theme {
+  --font-sans: 'Syne', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Colores discretos, serios y oscuros (Dark Mode by default) */
+  --color-background: #060b14;
+  --color-foreground: #cbd5e1;
+  --color-card: #0a1120;
+  --color-card-foreground: #e2e8f0;
+  --color-popover: #0a1120;
+  --color-popover-foreground: #e2e8f0;
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #1e293b;
+  --color-secondary-foreground: #f8fafc;
+  --color-muted: #0f172a;
+  --color-muted-foreground: #64748b;
+  --color-accent: #1e293b;
+  --color-accent-foreground: #f8fafc;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #f8fafc;
+  --color-border: #1e293b;
+  --color-input: #1e293b;
+  --color-ring: #3b82f6;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
 }
 
-body {
-  background: #060b14;
-  color: #cbd5e1;
-  font-family: 'Syne', sans-serif;
-  min-height: 100vh;
-}
-
-#root {
-  min-height: 100vh;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased min-h-screen;
+    font-family: var(--font-sans);
+  }
 }
 
 ::-webkit-scrollbar {

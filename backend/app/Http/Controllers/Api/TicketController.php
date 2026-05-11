@@ -48,10 +48,11 @@ final class TicketController extends Controller
         try {
             $tickets = $listMyTickets->execute($filters);
         } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('AutoTask tickets error', ['msg' => $e->getMessage()]);
             return response()->json([
                 'tickets' => [],
                 'count' => 0,
-                'message' => $e->getMessage() ?: 'AutoTask no configurado o error al conectar. Revisa .env (AUTOTASK_*).',
+                'message' => 'AutoTask no configurado o error al conectar. Revisa .env (AUTOTASK_*).',
             ], 200, ['Content-Type' => 'application/json; charset=UTF-8'], JSON_UNESCAPED_UNICODE);
         }
 

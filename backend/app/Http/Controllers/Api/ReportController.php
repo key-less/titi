@@ -7,6 +7,7 @@ use App\Infrastructure\DattoRmm\DattoRmmApiClient;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Reportes básicos: tickets por estado/periodo, dispositivos por site/tipo, parches por categoría.
@@ -47,7 +48,8 @@ class ReportController
             $ticketsReport['byStatus'] = $byStatus;
             $ticketsReport['total'] = count($tickets);
         } catch (\Throwable $e) {
-            $ticketsReport['error'] = $e->getMessage();
+            Log::error('Report tickets error', ['msg' => $e->getMessage()]);
+            $ticketsReport['error'] = 'Error al obtener tickets. Revisa la configuración de AutoTask en .env.';
         }
 
         $devicesReport = ['sites' => [], 'byType' => ['Workstation' => 0, 'Network' => 0, 'ESXi' => 0, 'Printer' => 0, 'Unknown' => 0], 'total' => 0, 'configured' => false];
@@ -102,8 +104,9 @@ class ReportController
                 $patchesReport['total'] = count($devices);
                 $patchesReport['byCategory'] = array_map(fn ($k) => ['label' => self::PATCH_STATUS_LABELS[$k], 'count' => $patchSummary[$k]], array_keys(self::PATCH_STATUS_LABELS));
             } catch (\Throwable $e) {
-                $devicesReport['error'] = $e->getMessage();
-                $patchesReport['error'] = $e->getMessage();
+                Log::error('Report devices/patches error', ['msg' => $e->getMessage()]);
+                $devicesReport['error'] = 'Error al obtener dispositivos. Revisa la configuración de Datto RMM en .env.';
+                $patchesReport['error'] = 'Error al obtener parches. Revisa la configuración de Datto RMM en .env.';
             }
         }
 

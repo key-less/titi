@@ -7,6 +7,7 @@ use App\Infrastructure\DattoRmm\DattoRmmApiClient;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Métricas del Dashboard: tickets (AutoTask) y parches/dispositivos (Datto RMM).
@@ -43,7 +44,8 @@ class DashboardController
             $openList = $listMyTickets->execute(['openOnly' => true, 'limit' => 500]);
             $openTickets = count($openList);
         } catch (\Throwable $e) {
-            $ticketsError = $e->getMessage();
+            Log::error('Dashboard open tickets error', ['msg' => $e->getMessage()]);
+            $ticketsError = 'Error al obtener tickets de AutoTask. Revisa la configuración en .env (AUTOTASK_*).';
         }
 
         try {
@@ -131,10 +133,11 @@ class DashboardController
                 ];
             }
         } catch (\Throwable $e) {
+            Log::error('Dashboard resolved tickets error', ['msg' => $e->getMessage()]);
             $weeklyChart = $this->emptyWeeklyChart();
             $responseTimeChart = $this->emptyResponseTimeChart();
             if (!$ticketsError) {
-                $ticketsError = $e->getMessage();
+                $ticketsError = 'Error al obtener tickets resueltos de AutoTask.';
             }
         }
 
