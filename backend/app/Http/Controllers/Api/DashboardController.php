@@ -120,7 +120,7 @@ class DashboardController
                 if (!isset($responseTimeByDay[$dayKey])) {
                     continue;
                 }
-                $responseTimeByDay[$dayKey]['minutesList'][] = $completed->diffInMinutes($created);
+                $responseTimeByDay[$dayKey]['minutesList'][] = (int) $created->diffInMinutes($completed);
             }
             $responseTimeChart = [];
             foreach ($responseTimeByDay as $row) {

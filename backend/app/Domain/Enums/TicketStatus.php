@@ -14,6 +14,14 @@ enum TicketStatus: string
     case WAITING_CUSTOMER = 'Waiting Customer';
     case WAITING_VENDOR = 'Waiting Vendor';
     case WORK_COMPLETE = 'Work Complete';
+    case WAITING_MATERIALS = 'Waiting Materials';
+    case DISPATCHED = 'Dispatched';
+    case ESCALATE = 'Escalate';
+    case WAITING_APPROVAL = 'Waiting Approval';
+    case CHANGE_ORDER = 'Change Order';
+    case ON_HOLD = 'On Hold';
+    case CUSTOMER_NOTE_ADDED = 'Customer Note Added';
+    case RMM_RESOLVED = 'RMM Resolved';
 
     public function label(): string
     {

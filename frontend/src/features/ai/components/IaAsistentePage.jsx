@@ -66,7 +66,7 @@ export function IaAsistentePage() {
             { icon: '▣', label: 'Dashboard', path: '/' },
             { icon: '◈', label: 'Mis Tickets', path: '/mis-tickets' },
             { icon: '◉', label: 'Parches', path: '/parches' },
-            { icon: '◎', label: 'Dispositivos', path: null },
+            { icon: '◎', label: 'Dispositivos', path: '/dispositivos' },
             { icon: '⬡', label: 'IA Asistente', path: '/ia-asistente' },
             { icon: '◇', label: 'Reportes', path: '/reportes' },
           ].map((item) => {

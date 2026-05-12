@@ -65,6 +65,17 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
                 'value' => $filters['createDateGte'],
             ];
         }
+        // AutoTask API requires at least one date filter to return results.
+        // When openOnly is used without an explicit date, default to the last 90 days.
+        $hasDateFilter = !empty($filters['createDateGte']) || !empty($filters['completedDateGte']) || !empty($filters['completedDateLte']);
+        if ($openOnly && !$hasDateFilter) {
+            $filter[] = [
+                'op' => 'gte',
+                'field' => 'createDate',
+                'value' => \Carbon\Carbon::now()->utc()->subDays(90)->format('Y-m-d\TH:i:s.000'),
+            ];
+        }
+
         if (!empty($filters['completedDateGte'])) {
             $filter[] = [
                 'op' => 'gte',
@@ -308,12 +319,20 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
         }
         $id = (int) $statusId;
         $map = config('autotask.status_labels', [
-            1 => 'New',
-            2 => 'Complete',
-            3 => 'In Progress',
-            4 => 'Waiting Customer',
-            5 => 'Waiting Vendor',
-            6 => 'Work Complete',
+            1  => 'New',
+            5  => 'Complete',
+            7  => 'Waiting Customer',
+            8  => 'In Progress',
+            9  => 'Waiting Materials',
+            10 => 'Dispatched',
+            11 => 'Escalate',
+            12 => 'Waiting Vendor',
+            13 => 'Waiting Approval',
+            15 => 'Change Order',
+            16 => 'Work Complete',
+            17 => 'On Hold',
+            19 => 'Customer Note Added',
+            20 => 'RMM Resolved',
         ]);
         return $map[$id] ?? 'Status ' . $id;
     }
@@ -325,9 +344,9 @@ final class AutoTaskTicketRepository implements TicketRepositoryInterface
         }
         $id = (int) $priorityId;
         $map = config('autotask.priority_labels', [
-            1 => 'Normal',
+            1 => 'Alta',
             2 => 'Media',
-            3 => 'Alta',
+            3 => 'Normal',
             4 => 'Critica',
         ]);
         return $map[$id] ?? 'Priority ' . $id;

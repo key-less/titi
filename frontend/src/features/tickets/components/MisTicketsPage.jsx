@@ -57,7 +57,7 @@ export function MisTicketsPage() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const ticketFromUrl = searchParams.get("ticket");
-  const [period, setPeriod] = useState("7d");
+  const [period, setPeriod] = useState("6m");
   const [activeTicket, setActiveTicket] = useState(null);
   const [assignedToFilter, setAssignedToFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -316,8 +316,8 @@ export function MisTicketsPage() {
                       <div>
                         <span className="helpdex-badge" style={{ background: priorityStyle.bg, color: priorityStyle.color }}>{priorityLbl}</span>
                       </div>
-                      <div style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }}>{formatRelative(t.completedDate || t.lastActivityDate)}</div>
-                      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, fontWeight: 700, color: "#818cf8" }}>{t.estimatedHours != null ? `${Number(t.estimatedHours)}h` : "—"}</div>
+                      <div style={{ fontFamily: "monospace", fontSize: 10, color: statusStyle, background: `${statusStyle}18`, padding: "2px 6px", borderRadius: 3, display: "inline-block", letterSpacing: "0.5px", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 86 }}>{statusLbl}</div>
+                      <div style={{ fontFamily: "monospace", fontSize: 10, color: "#475569" }}>{formatRelative(t.lastActivityDate || t.completedDate)}</div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         {t.assignedResource ? (
                           <div title={t.assignedResource.fullName} style={{ width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg, #0ea5e9, #0284c7)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 10, color: "#fff", fontFamily: "monospace" }}>{t.assignedResource.initials || "—"}</div>

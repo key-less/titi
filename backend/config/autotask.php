@@ -34,29 +34,29 @@ return [
     'verify_ssl' => filter_var(env('AUTOTASK_VERIFY_SSL', false), FILTER_VALIDATE_BOOLEAN),
 
     /*
-    | Mapeo IDs → nombre (según Task & Ticket Statuses en AutoTask, solo activos).
-    | Orden típico en lista: si los IDs no coinciden, revisa GET /api/tickets y ajusta.
+    | Mapeo IDs → nombre (obtenido de GET /Tickets/entityInformation/fields, campo 'status').
+    | Estos IDs son específicos de esta instancia AutoTask — no usar valores genéricos.
     */
     'status_labels' => [
-        1 => 'New',
-        2 => 'Waiting Approval',
-        3 => 'Dispatched',
-        4 => 'Change Order',
-        5 => 'Customer Note Added',
-        6 => 'In Progress',
-        7 => 'Escalate',
-        8 => 'Waiting Materials',
-        9 => 'Waiting Customer',
-        10 => 'Waiting Vendor',
-        11 => 'On Hold',
-        12 => 'Work Complete',
-        13 => 'Complete',
-        14 => 'RMM Resolved',
+        1  => 'New',
+        5  => 'Complete',
+        7  => 'Waiting Customer',
+        8  => 'In Progress',
+        9  => 'Waiting Materials',
+        10 => 'Dispatched',
+        11 => 'Escalate',
+        12 => 'Waiting Vendor',
+        13 => 'Waiting Approval',
+        15 => 'Change Order',
+        16 => 'Work Complete',
+        17 => 'On Hold',
+        19 => 'Customer Note Added',
+        20 => 'RMM Resolved',
     ],
     'priority_labels' => [
-        1 => 'Normal',
+        1 => 'Alta',
         2 => 'Media',
-        3 => 'Alta',
+        3 => 'Normal',
         4 => 'Critica',
     ],
 
@@ -67,20 +67,19 @@ return [
     | No incluyas IDs de estados abiertos (p. ej. 6 = In Progress, 2 = Waiting Approval en este mapeo).
     */
     'closed_status_labels' => ['Complete', 'Work Complete', 'RMM Resolved'],
-    'closed_status_ids' => [12, 13, 14],
+    'closed_status_ids' => [5, 16, 20],
 
     /*
     | IDs de estado para contar como "resueltos" en el Dashboard (Resueltos Hoy/Semana/Mes).
-    | Solo tickets en estado Complete (13) cuentan como resueltos. Ajusta si tu flujo usa otros.
+    | Complete (5) es el estado de resolución en esta instancia.
     */
-    'resolved_status_ids' => [13],
+    'resolved_status_ids' => [5],
 
     /*
-    | IDs de estado para "tickets abiertos" en la query a la API (Dashboard / open_only=1).
-    | In Progress (6), New (1), Waiting Customer (9), Waiting Vendor (10), On Hold (11).
-    | Ref: https://www.autotask.net/help/developerhelp/Content/APIs/REST/API_Calls/REST_Advanced_Query_Features.htm
+    | IDs de estado para "tickets abiertos" en la query a la API.
+    | Todos los estados NO cerrados (excluye Complete=5, Work Complete=16, RMM Resolved=20).
     */
-    'open_status_ids' => [1, 6, 9, 10, 11],
+    'open_status_ids' => [1, 7, 8, 9, 10, 11, 12, 13, 15, 17, 19],
 
     /*
     | Filtrar tickets por colas (Level I Support, Level II, etc.). Si está vacío, se muestran todos.

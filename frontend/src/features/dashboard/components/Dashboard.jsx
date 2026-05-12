@@ -131,7 +131,7 @@ export function Dashboard() {
   }, []);
 
   const { data: ticketDetail, loading: detailLoading, error: detailError, loadTicket: loadTicketDetail, clear: clearDetail } = useTicketWithSuggestions();
-  const { patches: patchData } = usePatches();
+  const { patches: patchData, devices: patchDevices } = usePatches();
   const { tickets: metricsTickets, patches: metricsPatches, slaBreached: metricsSlaBreached, generatedAt: metricsGeneratedAt, refetch: refetchMetrics } = useDashboardMetrics({ refetchIntervalMs: 60 * 1000 });
 
   const openTicketsCount = metricsTickets.openTickets ?? 0;
@@ -150,6 +150,11 @@ export function Dashboard() {
     : [];
   const avgResponseMinutes = responseTimeChartData.length > 0
     ? Math.round(responseTimeChartData.reduce((s, d) => s + (d.minutes || 0), 0) / responseTimeChartData.length)
+    : null;
+
+  const slaWeekData = responseTimeChartData.filter((d) => d.minutes > 0);
+  const slaWeekPercent = slaWeekData.length > 0
+    ? Math.round((slaWeekData.filter((d) => d.minutes <= (d.sla || 30)).length / slaWeekData.length) * 100)
     : null;
 
   useEffect(() => {
@@ -302,7 +307,7 @@ export function Dashboard() {
           <div className="bg-card border border-border rounded-xl shadow-sm hover:border-primary/40 transition-colors duration-200 p-5 animate-[slideIn_0.4s_ease_forwards] [animation-delay:200ms] opacity-0" style={{animationFillMode: 'forwards'}}>
             <div className="font-mono text-[10px] tracking-wider uppercase text-muted-foreground mb-2.5">Dispositivos RMM</div>
             <div className="font-mono text-[38px] font-bold tracking-tight leading-none text-indigo-400">
-              <Ticker value={metricsPatches?.devicesTotal ?? 0} />
+              <Ticker value={patchDevices?.length ?? metricsPatches?.devicesTotal ?? 0} />
             </div>
             <div className="font-mono text-[10px] text-muted-foreground mt-2.5">
               Datto RMM · total cuenta
@@ -420,14 +425,14 @@ export function Dashboard() {
             <div className="flex flex-col gap-4">
               {[
                 { label: "Tickets resueltos", value: resolvedMonthCount, color: "#22c55e", suffix: "", max: Math.max(resolvedMonthCount, 50) },
-                { label: "Horas facturadas", value: "—", color: "#818cf8", suffix: "h", max: 1 },
-                { label: "SLA cumplido", value: "—", color: "#22d3ee", suffix: "%", max: 1 },
+                { label: "Avg resolución (7d)", value: avgResponseMinutes, color: avgResponseMinutes != null && avgResponseMinutes <= 30 ? "#22c55e" : "#eab308", suffix: "m", max: 120, fallback: "Sin datos" },
+                { label: "SLA cumplido (7d)", value: slaWeekPercent, color: slaWeekPercent != null && slaWeekPercent >= 80 ? "#22d3ee" : "#f97316", suffix: "%", max: 100, fallback: "Sin datos" },
               ].map((m) => (
                 <div key={m.label}>
                   <div className="flex justify-between mb-1.5">
                     <span className="font-mono text-[11px] text-muted-foreground">{m.label}</span>
                     <span className="font-mono text-sm font-bold" style={{ color: m.color }}>
-                      {typeof m.value === "number" ? m.value + m.suffix : m.value}
+                      {typeof m.value === "number" ? m.value + m.suffix : (m.fallback ?? m.value ?? "—")}
                     </span>
                   </div>
                   <div className="h-1.5 rounded-full bg-border overflow-hidden">
@@ -588,7 +593,7 @@ export function Dashboard() {
                 const statusClasses = statusColorClasses[statusLbl] || "bg-slate-500/15 text-slate-400";
                 
                 return (
-                  <div key={t.id} className="animate-[slideIn_0.3s_ease_forwards] opacity-0" style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'forwards' }}>
+                  <div key={t.id} className="animate-[slideIn_0.3s_ease_forwards]" style={{ animationDelay: `${i * 0.05}s`, animationFillMode: 'forwards' }}>
                     <div
                       className={`grid grid-cols-[100px_1fr_100px_90px_70px_80px] gap-3 px-4 py-3.5 items-center border-b border-border/50 transition-colors duration-150 cursor-pointer ${activeTicket === t.id ? "bg-muted/50" : "hover:bg-muted/30"}`}
                       onClick={() => setActiveTicket(activeTicket === t.id ? null : t.id)}
